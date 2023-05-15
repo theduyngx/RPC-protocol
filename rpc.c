@@ -134,43 +134,80 @@ void rpc_serve_all(rpc_server *server) {
 
 
     /// DEBUGGING:
-    char buffer[256];
-    // Read characters from the connection, then process
-    int n = (int) read(conn_fd, buffer, 255); // n is number of characters read
+    char data_buffer[256];
+    char name_buffer[256];
+    // receive name from the connection, then process; n is number of characters read
+    int n = (int) recv(conn_fd, name_buffer, 255, MSG_DONTWAIT);
     if (n < 0) {
         fprintf(stderr, "server: rpc_serve_all - cannot read from client\n");
         exit(EXIT_FAILURE);
     }
     // Null-terminate string
-    buffer[n] = '\0';
+    name_buffer[n] = '\0';
 
     // check for name - of course bunch of issues here - buffer size not returned correctly, etc.
     // so this string comparison is really not quite valid
     qnode_f* curr = server->functions->node;
     for (; curr != NULL; curr = curr->next) {
         char* curr_name = curr->function->f_name;
-        if (strcmp(curr_name, buffer) == 0)
+        if (strncmp(curr_name, name_buffer, strlen(curr_name)) == 0)
             break;
     }
     if (curr == NULL)
         fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot find requested function's name");
+                        "cannot find requested function's name\n");
 
-    // Write the data packet back and let client convert that to the RPC handle
+    // get the function handler corresponding to the request
+    rpc_handler f_handler = curr->function->f_handler;
+
+    // Send back data packet back with some things and let client convert that to the RPC handle
+    // this is probably where you send the RPC data packet
+    // if the function requires only a single parameter, then simply ask for a single integer
+    // otherwise, it must ask for the data2_len and data2
+
     char* some_handle = "This needs to be some handle\n";
-    n = (int) write(conn_fd, some_handle, strlen(some_handle));
+    n = (int) send(conn_fd, some_handle, strlen(some_handle), MSG_DONTWAIT);
     if (n < 0) {
-        perror("write");
+        fprintf(stderr, "server: rpc_serve_all - "
+                        "cannot send the packet to client after function handler has been found\n");
         exit(EXIT_FAILURE);
     }
+
+    // after that, we must read, or receive from client's again, this is when client calls rpc_call
+    n = (int) recv(conn_fd, data_buffer, 255, MSG_DONTWAIT);
+    if (n < 0) {
+        fprintf(stderr, "server: rpc_serve_all - cannot read "
+                        "required parameters for function call from client\n");
+        exit(EXIT_FAILURE);
+    }
+
     rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
-    memcpy(data, buffer, sizeof buffer);
+    memcpy(data, data_buffer, sizeof data_buffer);
+
+    // converting network byte ordering to system's
+    data->data1 = ntohs(data->data1);
     printf("data1 = %d, data2_len = %lu", data->data1, data->data2_len);
-    rpc_data_free(data);
+
+    // get the required stuff for function somehow here
+    // and importantly, send it back to client
+    rpc_data* response = f_handler(data);
+    memcpy(data_buffer, response, sizeof *response);
+
+    /// NOTE: DOES MEMCPY USE STRLEN OR SIZEOF? REMEMBER THAT SIZE_T IS PLATFORM-DEPENDENT
+    /// ANOTHER NOTE: STRLEN / SIZEOF THE BUFFER, OR THE RESPONSE?
+    /// SHOULDN'T IT BE THE RESPONSE SO THAT THE CLIENT KNOWS WHEN TO STOP READING?
+    n = (int) send(conn_fd, data_buffer, strlen(data_buffer), MSG_DONTWAIT);
+    if (n < 0) {
+        fprintf(stderr, "server: rpc_serve_all - "
+                        "cannot send the response to client\n");
+        exit(EXIT_FAILURE);
+    }
+
     ///
 
 
     // close the sockets and free structures
+    rpc_data_free(data);
     close(*(server->listen_fd));
     close(*(server->conn_fd));
     free_queue(server->functions);
