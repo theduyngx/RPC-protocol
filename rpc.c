@@ -138,15 +138,27 @@ void rpc_serve_all(rpc_server *server) {
     // Read characters from the connection, then process
     int n = (int) read(conn_fd, buffer, 255); // n is number of characters read
     if (n < 0) {
-        perror("read");
+        fprintf(stderr, "server: rpc_serve_all - cannot read from client\n");
         exit(EXIT_FAILURE);
     }
     // Null-terminate string
     buffer[n] = '\0';
 
-    // Write message back
-    printf("Here is the message: %s\n", buffer);
-    n = (int) write(conn_fd, "I got your message\n", 19);
+    // check for name - of course bunch of issues here - buffer size not returned correctly, etc.
+    // so this string comparison is really not quite valid
+    qnode_f* curr = server->functions->node;
+    for (; curr != NULL; curr = curr->next) {
+        char* curr_name = curr->function->f_name;
+        if (strcmp(curr_name, buffer) == 0)
+            break;
+    }
+    if (curr == NULL)
+        fprintf(stderr, "server: rpc_serve_all - "
+                        "cannot find requested function's name");
+
+    // Write the data packet back and let client convert that to the RPC handle
+    char* some_handle = "This needs to be some handle\n";
+    n = (int) write(conn_fd, some_handle, strlen(some_handle));
     if (n < 0) {
         perror("write");
         exit(EXIT_FAILURE);
@@ -218,7 +230,7 @@ rpc_client *rpc_init_client(char *addr, int port) {
     // no result address found
     if (result == NULL) {
         fprintf(stderr, "rpc_init_client: failed to connect\n");
-        exit(EXIT_FAILURE);
+        return NULL;
     }
     freeaddrinfo(results);
 
@@ -227,41 +239,7 @@ rpc_client *rpc_init_client(char *addr, int port) {
     assert(client);
     client->sock_fd = &sock_fd;
     assert(client->sock_fd);
-
-
-    /// DEBUG
-    char buffer[256];
-    int n;
-
-    // Read message from stdin
-    printf("Please enter the message: ");
-    if (fgets(buffer, 255, stdin) == NULL) {
-        exit(EXIT_SUCCESS);
-    }
-    // Remove \n that was read by gets
-    buffer[strlen(buffer) - 1] = 0;
-
-    // Send message to server
-    n = (int) write(sock_fd, buffer, strlen(buffer));
-    if (n < 0) {
-        perror("socket");
-        exit(EXIT_FAILURE);
-    }
-
-    // Read message from server
-    n = (int) read(sock_fd, buffer, 255);
-    if (n < 0) {
-        perror("read");
-        exit(EXIT_FAILURE);
-    }
-    // Null-terminate string
-    buffer[n] = '\0';
-    printf("%s\n", buffer);
-
-    close(sock_fd);
-    ///
-
-    return NULL;
+    return client;
 }
 
 
@@ -272,7 +250,34 @@ rpc_client *rpc_init_client(char *addr, int port) {
  * @return       the requirements to make the call (or the RPC handle), or NULL on error
  */
 rpc_handle *rpc_find(rpc_client *client, char *name) {
-    return NULL;
+    /// DEBUG
+    char buffer[256];
+    int n;
+
+    // Send function name to server
+    n = (int) write(*(client->sock_fd), name, strlen(name));
+    if (n < 0) {
+        fprintf(stderr, "client: rpc_find - cannot write to socket\n");
+        return NULL;
+    }
+
+    // Read handle from server
+    n = (int) read(*(client->sock_fd), buffer, 255);
+    if (n < 0) {
+        perror("read");
+        return NULL;
+    }
+    // Null-terminate string
+    buffer[n] = '\0';
+    printf("%s\n", buffer);
+
+    // get the function handle
+    rpc_handle* handle = (rpc_handle*) malloc(sizeof(rpc_handle));
+    memcpy(handle, buffer, sizeof buffer);
+
+    close(*(client->sock_fd));
+    ///
+    return handle;
 }
 
 
