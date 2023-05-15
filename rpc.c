@@ -7,12 +7,13 @@
 #include "function_queue.h"
 
 
+/* RPC server structure */
 struct rpc_server {
     /* Add variable(s) for server state */
-    int *conn_fd;
+    int* listen_fd;
+    int* conn_fd;
     queue_f* functions;
 };
-
 
 /**
  * Initialize the server RPC. If NULL is returned, that means the initialization was not
@@ -20,9 +21,8 @@ struct rpc_server {
  * @param port the port number
  * @return     the server RPC
  */
-__attribute__((unused))
 rpc_server *rpc_init_server(int port) {
-    int listen_fd = 0, conn_fd, re = 1;
+    int listen_fd = 0, re = 1;
     struct addrinfo hints, *results;
 
     // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
@@ -59,14 +59,9 @@ rpc_server *rpc_init_server(int port) {
     int listen_queue_size = 10;
     listen(listen_fd, listen_queue_size);
 
-    // accept connection
-    struct sockaddr_storage client_addr;
-    socklen_t client_addr_size = sizeof client_addr;
-    conn_fd = accept(listen_fd, (struct sockaddr*) &client_addr, &client_addr_size);
-
-    // initializing rpc server structure
+    // initializing rpc server structure and add its listener
     struct rpc_server* server = (struct rpc_server*) malloc(sizeof (struct rpc_server));
-    server->conn_fd = &conn_fd;
+    server->listen_fd = &listen_fd;
     server->functions = queue_init();
     return server;
 }
@@ -78,19 +73,39 @@ rpc_server *rpc_init_server(int port) {
  * @param handler the function's handler
  * @return        0 if successful, and -1 if otherwise
  */
-__attribute__((unused))
 int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
-    if (server == NULL || server->conn_fd == NULL)
+    // checking if server can register the function or not
+    if (server == NULL || server->listen_fd == NULL) {
+        fprintf(stderr, "rpc_register - server is NULL or its listener is NULL\n");
         return -1;
+    }
+    // initialize function for registration
     function_t* f = function_init(name, handler);
-    if (f == NULL)
+    if (f == NULL) {
+        fprintf(stderr, "rpc_register - function_init returns NULL\n");
         return -1;
+    }
     enqueue(server->functions, f);
     return 0;
 }
 
-__attribute__((unused))
+
+/**
+ * Serve the clients.
+ * @param server the server RPC
+ */
 void rpc_serve_all(rpc_server *server) {
+    int conn_fd;
+
+    // accept connection
+    struct sockaddr_storage client_addr;
+    socklen_t client_addr_size = sizeof client_addr;
+    conn_fd = accept(*(server->listen_fd),
+                     (struct sockaddr*) &client_addr, &client_addr_size);
+    server->conn_fd = &conn_fd;
+
+    // close the sockets
+    close(*(server->conn_fd));
 }
 
 struct rpc_client {

@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
 #include "function_queue.h"
 
 
@@ -18,18 +19,27 @@
  */
 function_t* function_init(char* f_name, rpc_handler f_handler) {
     unsigned long name_len = strlen(f_name);
-    if (name_len < MIN_NAME_LEN)
+    if (name_len < MIN_NAME_LEN) {
+        fprintf(stderr, "function_init - name length = %lu, "
+                        "below minimal threshold %d\n",
+                name_len, MIN_NAME_LEN);
         return NULL;
+    }
     for (int i=0; i < strlen(f_name); i++) {
         char character = f_name[i];
         int ascii = (int) character;
-        if (ascii < 32 || ascii > 126)
+        if (ascii < 32 || ascii > 126) {
+            fprintf(stderr, "function_init - ascii character %c (ascii %d) "
+                            "is not within range 32 and 126\n",
+                    character, ascii);
             return NULL;
+        }
     }
     function_t* f = (function_t*) malloc(sizeof(function_t));
     assert(f);
     f->f_name = f_name;
     f->f_handler = f_handler;
+    assert(f->f_name && f->f_handler);
     return f;
 }
 
