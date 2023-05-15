@@ -3,3 +3,5 @@ server
 rpc
 *.o
 /.idea
+CMakeLists.txt
+cmake-build-debug/
