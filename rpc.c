@@ -71,12 +71,13 @@ rpc_server *rpc_init_server(int port) {
         return NULL;
     }
 
-    // bind and listen
+    // bind to the appropriate address and listen
     err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
     if (err == -1) {
         fprintf(stderr, "rpc_init_server - listen socket cannot be bound\n");
         return NULL;
     }
+    freeaddrinfo(results);
     int listen_queue_size = 10;
     listen(listen_fd, listen_queue_size);
 
@@ -113,7 +114,8 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 
 
 /**
- * Serve the clients.
+ * Serve the clients - accepting their connections, decompress the payload, and call the
+ * function as requested.
  * @param server the server RPC
  */
 void rpc_serve_all(rpc_server *server) {
@@ -123,10 +125,35 @@ void rpc_serve_all(rpc_server *server) {
     int conn_fd = accept(*(server->listen_fd),
                          (struct sockaddr*) &client_addr, &client_addr_size);
     if (conn_fd == -1) {
-        fprintf(stderr, "rpc_serve_all - connection socket cannot accept connections\n");
+        fprintf(stderr, "rpc_serve_all - connect socket cannot accept connections\n");
         return;
     }
     server->conn_fd = &conn_fd;
+
+
+    /// DEBUGGING:
+    char buffer[256];
+    // Read characters from the connection, then process
+    int n = (int) read(conn_fd, buffer, 255); // n is number of characters read
+    if (n < 0) {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+    // Null-terminate string
+    buffer[n] = '\0';
+
+    // Write message back
+    printf("Here is the message: %s\n", buffer);
+    n = (int) write(conn_fd, "I got your message\n", 19);
+    if (n < 0) {
+        perror("write");
+        exit(EXIT_FAILURE);
+    }
+    rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
+    memcpy(data, buffer, sizeof buffer);
+    printf("data1 = %d, data2_len = %lu", data->data1, data->data2_len);
+    ///
+
 
     // close the sockets and free structures
     close(*(server->listen_fd));
