@@ -1,5 +1,7 @@
-/* Header for RPC system */
-/* Please do not modify this file */
+/*
+ * File    : client.c
+ * Purpose : Header for RPC system. Please do not modify this file.
+ */
 
 #ifndef RPC_H
 #define RPC_H
@@ -51,20 +53,20 @@ rpc_client* rpc_init_client(char* addr, int port);
 /* Finds a remote function by name */
 /* RETURNS: rpc_handle* on success, NULL on error */
 /* rpc_handle* will be freed with a single call to free(3) */
-rpc_handle* rpc_find(rpc_client* cl, char* name);
+rpc_handle* rpc_find(rpc_client* client, char* name);
 
 /* Calls remote function using handle */
 /* RETURNS: rpc_data* on success, NULL on error */
-rpc_data* rpc_call(rpc_client* cl, rpc_handle* h, rpc_data* payload);
+rpc_data* rpc_call(rpc_client* client, rpc_handle* handle, rpc_data* payload);
 
 /* Cleans up client state and closes client */
-void rpc_close_client(rpc_client* cl);
+void rpc_close_client(rpc_client* client);
 
 /* ---------------- */
 /* Shared functions */
 /* ---------------- */
 
 /* Frees a rpc_data struct */
-__attribute__((unused)) void rpc_data_free(rpc_data* data);
+void rpc_data_free(rpc_data* data);
 
 #endif

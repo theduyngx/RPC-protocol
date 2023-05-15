@@ -1,10 +1,19 @@
-#include <assert.h>
+/*
+ * File    : client.c
+ * Purpose : The client API.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "rpc.h"
 
 
+/**
+ * Main entry to client program.
+ * @return 0 if successful
+ */
 int main(int argc, char *argv[]) {
     int exit_code = 0;
 
@@ -21,7 +30,7 @@ int main(int argc, char *argv[]) {
 
     for (int i = 0; i < 2; i++) {
         /* Prepare request */
-        char left_operand = i;
+        char left_operand = (char) i;
         char right_operand = 100;
         rpc_data request_data = {
             .data1 = left_operand, .data2_len = 1, .data2 = &right_operand};

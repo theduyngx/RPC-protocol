@@ -7,8 +7,9 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <netdb.h>
+#include <assert.h>
 #include <string.h>
+#include <netdb.h>
 #include <unistd.h>
 #include "rpc.h"
 #include "function_queue.h"
@@ -26,7 +27,7 @@ struct rpc_server {
  * Initialize the server RPC. If NULL is returned, that means the initialization was not
  * successful.
  * @param port the port number
- * @return     the server RPC
+ * @return     NULL if unsuccessful, or the server RPC if otherwise
  */
 rpc_server *rpc_init_server(int port) {
     int listen_fd = 0, re = 1;
@@ -56,7 +57,6 @@ rpc_server *rpc_init_server(int port) {
                                     result->ai_protocol
                                     )) >= 0)
             break;
-        close(listen_fd);
     }
     if (listen_fd < 0) {
         fprintf(stderr, "rpc_init_server - listen socket cannot be found\n");
@@ -83,8 +83,10 @@ rpc_server *rpc_init_server(int port) {
 
     // initializing rpc server structure and add its listener
     struct rpc_server* server = (struct rpc_server*) malloc(sizeof (struct rpc_server));
+    assert(server);
     server->listen_fd = &listen_fd;
     server->functions = queue_init();
+    assert(server->listen_fd && server->functions);
     return server;
 }
 
@@ -152,6 +154,7 @@ void rpc_serve_all(rpc_server *server) {
     rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
     memcpy(data, buffer, sizeof buffer);
     printf("data1 = %d, data2_len = %lu", data->data1, data->data2_len);
+    rpc_data_free(data);
     ///
 
 
@@ -164,35 +167,141 @@ void rpc_serve_all(rpc_server *server) {
     free(server);
 }
 
+
+/* RPC client structure */
 struct rpc_client {
-    /* Add variable(s) for client state */
+    int* sock_fd;
 };
 
+/* RPC handle structure */
 struct rpc_handle {
-    /* Add variable(s) for handle */
+    // ...
 };
 
-__attribute__((unused))
+
+/**
+ * Initialize the client RPC. If NULL is returned, that means the initialization was not
+ * successful.
+ * @param addr server's domain address
+ * @param port the port number
+ * @return     client RPC if successful, or NULL if otherwise
+ */
 rpc_client *rpc_init_client(char *addr, int port) {
+    int sock_fd = 0, err;
+    struct addrinfo hints, *results;
+
+    // set all fields in hints to 0, then set specific fields to correspond to IPv6 client
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_STREAM;
+
+    // convert port number and find address of server
+    char port_str[10];
+    sprintf(port_str, "%d", port);
+    err = getaddrinfo(addr, port_str, &hints, &results);
+    if (err != 0) {
+        fprintf(stderr, "rpc_init_server - getaddrinfo unsuccessful\n");
+        return NULL;
+    }
+
+    // get the appropriate address of server
+    struct addrinfo* result = results;
+    for (; result != NULL; result = result->ai_next) {
+        sock_fd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+        if (sock_fd == -1)
+            continue;
+        err = connect(sock_fd, result->ai_addr, result->ai_addrlen);
+        if (err != -1)
+            break;
+        close(sock_fd);
+    }
+    // no result address found
+    if (result == NULL) {
+        fprintf(stderr, "rpc_init_client: failed to connect\n");
+        exit(EXIT_FAILURE);
+    }
+    freeaddrinfo(results);
+
+    // initialize the client RPC
+    rpc_client* client = (rpc_client*) malloc(sizeof(rpc_client));
+    assert(client);
+    client->sock_fd = &sock_fd;
+    assert(client->sock_fd);
+
+
+    /// DEBUG
+    char buffer[256];
+    int n;
+
+    // Read message from stdin
+    printf("Please enter the message: ");
+    if (fgets(buffer, 255, stdin) == NULL) {
+        exit(EXIT_SUCCESS);
+    }
+    // Remove \n that was read by gets
+    buffer[strlen(buffer) - 1] = 0;
+
+    // Send message to server
+    n = (int) write(sock_fd, buffer, strlen(buffer));
+    if (n < 0) {
+        perror("socket");
+        exit(EXIT_FAILURE);
+    }
+
+    // Read message from server
+    n = (int) read(sock_fd, buffer, 255);
+    if (n < 0) {
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+    // Null-terminate string
+    buffer[n] = '\0';
+    printf("%s\n", buffer);
+
+    close(sock_fd);
+    ///
+
     return NULL;
 }
 
-__attribute__((unused))
-rpc_handle *rpc_find(rpc_client *cl, char *name) {
+
+/**
+ * Find a function from a specific name to get the requirements to make the call.
+ * @param client the client RPC
+ * @param name   the function's name
+ * @return       the requirements to make the call (or the RPC handle), or NULL on error
+ */
+rpc_handle *rpc_find(rpc_client *client, char *name) {
     return NULL;
 }
 
-__attribute__((unused))
-rpc_data *rpc_call(rpc_client *cl, rpc_handle *h, rpc_data *payload) {
+
+/**
+ * Run the remote procedure (calling the function as if locally) to obtain the response
+ * data from the server. Viz. Calls remote function using handle.
+ * @param client  the client RPC
+ * @param handle  the RPC handle
+ * @param payload the RPC payload (the data to send to server)
+ * @return        the response data if successful, or NULL if otherwise
+ */
+rpc_data *rpc_call(rpc_client *client, rpc_handle *handle, rpc_data *payload) {
     return NULL;
 }
 
-__attribute__((unused))
-void rpc_close_client(rpc_client *cl) {
 
+/**
+ * Cleans up client state and closes client connection.
+ * @param client the client RPC
+ */
+void rpc_close_client(rpc_client *client) {
+    close(*(client->sock_fd));
+    free(client);
 }
 
-__attribute__((unused))
+/**
+ * Free the RPC data packet structure.
+ * @param data the RPC data
+ */
 void rpc_data_free(rpc_data *data) {
     if (data == NULL) {
         return;
