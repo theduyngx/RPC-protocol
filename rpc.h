@@ -35,10 +35,10 @@ rpc_server* rpc_init_server(int port);
 
 /* Registers a function (mapping from name to handler) */
 /* RETURNS: -1 on failure */
-int rpc_register(rpc_server* srv, char* name, rpc_handler handler);
+int rpc_register(rpc_server* server, char* name, rpc_handler handler);
 
 /* Start serving requests */
-void rpc_serve_all(rpc_server* srv);
+void rpc_serve_all(rpc_server* server);
 
 /* ---------------- */
 /* Client functions */

@@ -43,12 +43,9 @@ int main(int argc, char *argv[]) {
     }
 
 cleanup:
-    if (handle_add2 != NULL) {
+    if (handle_add2 != NULL)
         free(handle_add2);
-    }
-
     rpc_close_client(state);
     state = NULL;
-
     return exit_code;
 }
