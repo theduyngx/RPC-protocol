@@ -1,10 +1,21 @@
-#include "rpc.h"
-#include <assert.h>
+/*
+ * File    : server.c
+ * Purpose : The server API.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
+#include "rpc.h"
 
+/* function prototypes */
 rpc_data* add2_i8(rpc_data*);
 
+
+/**
+ * Main entry to the server.
+ * @return 0 if execution is successful
+ */
 int main(int argc, char* argv[]) {
     rpc_server *state;
 
@@ -23,8 +34,12 @@ int main(int argc, char* argv[]) {
     return 0;
 }
 
-/* Adds 2 signed 8 bit numbers */
-/* Uses data1 for left operand, data2 for right operand */
+
+/**
+ * Adds 2 signed 8 bit numbers. ses data1 for left operand, data2 for right operand.
+ * @param in  the RPC data input
+ * @return    the portable RPC data response
+ */
 rpc_data* add2_i8(rpc_data* in) {
     /* Check data2 */
     if (in->data2 == NULL || in->data2_len != 1) {
@@ -32,7 +47,7 @@ rpc_data* add2_i8(rpc_data* in) {
     }
 
     /* Parse request */
-    char n1 = in->data1;
+    char n1 = (char) in->data1;
     char n2 = ((char*) in->data2)[0];
 
     /* Perform calculation */

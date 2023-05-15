@@ -1,8 +1,8 @@
 /*
  * Author  : The Duy Nguyen - 1100548
- * File    : input_queue.h
- * Purpose : Header file for input queue (the queue which contains all processes that request to
- *           be run). The input queue is implemented using the queue data structure.
+ * File    : function_queue.h
+ * Purpose : Header file for function queue (the queue which contains all registered function in
+ *           the server RPC).
  */
 
 #ifndef PROJECT1_CLION_UTILS_H

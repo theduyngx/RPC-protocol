@@ -1,7 +1,8 @@
 /*
  * Author  : The Duy Nguyen - 1100548
- * File    : queue.c
- * Purpose : Functions related to the queue structure.
+ * File    : function_queue.c
+ * Purpose : Functions related to the function structure and queue structure for storing said
+ *           function structure in RPC.
  */
 
 #include <stdlib.h>

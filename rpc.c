@@ -1,3 +1,10 @@
+/*
+ * Author  : The Duy Nguyen - 1100548
+ * File    : rpc.c
+ * Purpose : The Remote Procedure Call functions for its interface header file.
+ *           This entails functions for both server and client side.
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <netdb.h>
@@ -9,11 +16,11 @@
 
 /* RPC server structure */
 struct rpc_server {
-    /* Add variable(s) for server state */
     int* listen_fd;
     int* conn_fd;
     queue_f* functions;
 };
+
 
 /**
  * Initialize the server RPC. If NULL is returned, that means the initialization was not
@@ -35,8 +42,10 @@ rpc_server *rpc_init_server(int port) {
     char port_str[10];
     sprintf(port_str, "%d", port);
     int err = getaddrinfo(NULL, port_str, &hints, &results);
-    if (err != 0)
+    if (err != 0) {
+        fprintf(stderr, "rpc_init_server - getaddrinfo unsuccessful\n");
         return NULL;
+    }
 
     // get the appropriate address to create the listen file descriptor
     struct addrinfo *result = results;
@@ -49,13 +58,25 @@ rpc_server *rpc_init_server(int port) {
             break;
         close(listen_fd);
     }
+    if (listen_fd < 0) {
+        fprintf(stderr, "rpc_init_server - listen socket cannot be found\n");
+        return NULL;
+    }
 
     // set options to reusable address
-    setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR, &re, sizeof re);
+    err = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
+                     &re, sizeof re);
+    if (err == -1) {
+        fprintf(stderr, "rpc_init_server - setsockopt unsuccessful\n");
+        return NULL;
+    }
+
     // bind and listen
     err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
-    if (err != 0)
+    if (err == -1) {
+        fprintf(stderr, "rpc_init_server - listen socket cannot be bound\n");
         return NULL;
+    }
     int listen_queue_size = 10;
     listen(listen_fd, listen_queue_size);
 
@@ -65,6 +86,7 @@ rpc_server *rpc_init_server(int port) {
     server->functions = queue_init();
     return server;
 }
+
 
 /**
  * Register a function to the server RPC.
@@ -95,17 +117,24 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
  * @param server the server RPC
  */
 void rpc_serve_all(rpc_server *server) {
-    int conn_fd;
-
     // accept connection
     struct sockaddr_storage client_addr;
     socklen_t client_addr_size = sizeof client_addr;
-    conn_fd = accept(*(server->listen_fd),
-                     (struct sockaddr*) &client_addr, &client_addr_size);
+    int conn_fd = accept(*(server->listen_fd),
+                         (struct sockaddr*) &client_addr, &client_addr_size);
+    if (conn_fd == -1) {
+        fprintf(stderr, "rpc_serve_all - connection socket cannot accept connections\n");
+        return;
+    }
     server->conn_fd = &conn_fd;
 
-    // close the sockets
+    // close the sockets and free structures
+    close(*(server->listen_fd));
     close(*(server->conn_fd));
+    free_queue(server->functions);
+    free(server->listen_fd);
+    free(server->conn_fd);
+    free(server);
 }
 
 struct rpc_client {
