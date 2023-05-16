@@ -222,12 +222,22 @@ void rpc_serve_all(rpc_server *server) {
 
 /* RPC client structure */
 struct rpc_client {
-    int* sock_fd;
+    int sock_fd;
 };
 
 /* RPC handle structure */
 struct rpc_handle {
-    // ...
+    unsigned long function_id;
+    // do we have to store like the list of parameters required here?
+    // if so, we know:
+    //  1. rpc_data is context-sensitive, as in depending on the context, different conversion occurs
+    //  2. rpc_data must be converted to rpc_handle, including the num_param and param_list
+    //  3. the handle must later be re-converted to handle so that it can be sent through the network
+    //  4. the server must be context-sensitive with rpc_data and understand how to convert that to
+    //     each required parameter
+
+    // for now, we'll just go with the simple single-parameter interface
+    int param;
 };
 
 
@@ -279,7 +289,7 @@ rpc_client *rpc_init_client(char *addr, int port) {
     // initialize the client RPC
     rpc_client* client = (rpc_client*) malloc(sizeof(rpc_client));
     assert(client);
-    client->sock_fd = &sock_fd;
+    client->sock_fd = sock_fd;
     assert(client->sock_fd);
     return client;
 }
@@ -291,20 +301,20 @@ rpc_client *rpc_init_client(char *addr, int port) {
  * @param name   the function's name
  * @return       the requirements to make the call (or the RPC handle), or NULL on error
  */
-rpc_handle *rpc_find(rpc_client *client, char *name) {
+rpc_handle* rpc_find(rpc_client *client, char *name) {
     /// DEBUG
     char buffer[256];
     int n;
 
     // Send function name to server
-    n = (int) write(*(client->sock_fd), name, strlen(name));
+    n = (int) write(client->sock_fd, name, strlen(name));
     if (n < 0) {
         fprintf(stderr, "client: rpc_find - cannot write to socket\n");
         return NULL;
     }
 
     // Read handle from server
-    n = (int) read(*(client->sock_fd), buffer, 255);
+    n = (int) read(client->sock_fd, buffer, 255);
     if (n < 0) {
         perror("read");
         return NULL;
@@ -315,9 +325,18 @@ rpc_handle *rpc_find(rpc_client *client, char *name) {
 
     // get the function handle
     rpc_handle* handle = (rpc_handle*) malloc(sizeof(rpc_handle));
-    memcpy(handle, buffer, sizeof buffer);
+    rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
+    memcpy(data, buffer, sizeof buffer);
 
-    close(*(client->sock_fd));
+    /// NOTE:
+    // convert data to handle here
+    // obviously no parameter conversion required thus far since we are only looking at simple
+    // interface first.
+
+    // for now, let's just assume that the data1 field holds the function's id
+    handle->function_id = data->data1;
+
+    close(client->sock_fd);
     ///
     return handle;
 }
@@ -331,7 +350,28 @@ rpc_handle *rpc_find(rpc_client *client, char *name) {
  * @param payload the RPC payload (the data to send to server)
  * @return        the response data if successful, or NULL if otherwise
  */
-rpc_data *rpc_call(rpc_client *client, rpc_handle *handle, rpc_data *payload) {
+rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
+    // update payload to the handle
+    // use the simple interface, with only data1
+    handle->param = payload->data1;
+
+    // that was quite an unnecessary step since eventually we will have to convert handle to
+    // rpc_data anyway, but let's just experiment a bit
+    rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
+
+    // NOT GOOD: converting unsigned long to integer
+    data->data1 = (int) handle->function_id;
+    data->data2_len = 1;
+
+    // not sure what was happening here, needed to revise how to pass this
+    char param = (char) handle->param;
+    data->data2 = &param;
+
+    // also don't forget about ntohs and all those byte ordering conversions
+    // and then send back to server i guess
+
+    /// NOTE: make a module with functionalities related to sending and receiving packets!!!
+    /// It is apparent that we use this a lot back and forth so it is better to be efficient.
     return NULL;
 }
 
@@ -341,7 +381,7 @@ rpc_data *rpc_call(rpc_client *client, rpc_handle *handle, rpc_data *payload) {
  * @param client the client RPC
  */
 void rpc_close_client(rpc_client *client) {
-    close(*(client->sock_fd));
+    close(client->sock_fd);
     free(client);
 }
 
@@ -349,7 +389,7 @@ void rpc_close_client(rpc_client *client) {
  * Free the RPC data packet structure.
  * @param data the RPC data
  */
-void rpc_data_free(rpc_data *data) {
+void rpc_data_free(rpc_data* data) {
     if (data == NULL) {
         return;
     }
