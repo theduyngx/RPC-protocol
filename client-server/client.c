@@ -72,7 +72,13 @@ int main(int argc, char** argv) {
         // Prepare request
         char left_operand = (char) i;
         char right_operand = 100;
-        rpc_data request_data = {.data1 = left_operand, .data2_len = 1, .data2 = &right_operand};
+
+        // IO operation to fetch request here?
+        rpc_data request_data = {
+            .data1 = left_operand,
+            .data2_len = 1, // ???
+            .data2 = &right_operand
+        };
 
         // Call and receive response
         rpc_data* response_data = rpc_call(state, handle_add2, &request_data);

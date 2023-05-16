@@ -44,6 +44,7 @@ int main(int argc, char** argv) {
     }
 
     // register functions to server RPC
+    // NOTE: this needs to be converted to full-fledged IO stuff too
     if (rpc_register(state, "add2", add2_i8) == -1) {
         fprintf(stderr, "Failed to register add2\n");
         exit(EXIT_FAILURE);
