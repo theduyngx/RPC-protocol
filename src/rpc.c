@@ -17,8 +17,8 @@
 
 /* RPC server structure */
 struct rpc_server {
-    int* listen_fd;
-    int* conn_fd;
+    int listen_fd;
+    int conn_fd;
     queue_f* functions;
 };
 
@@ -44,7 +44,8 @@ rpc_server *rpc_init_server(int port) {
     sprintf(port_str, "%d", port);
     int err = getaddrinfo(NULL, port_str, &hints, &results);
     if (err != 0) {
-        fprintf(stderr, "rpc_init_server - getaddrinfo unsuccessful\n");
+        fprintf(stderr, "rpc-server: rpc_init_server - "
+                        "getaddrinfo unsuccessful\n");
         return NULL;
     }
 
@@ -59,7 +60,8 @@ rpc_server *rpc_init_server(int port) {
             break;
     }
     if (listen_fd < 0) {
-        fprintf(stderr, "rpc_init_server - listen socket cannot be found\n");
+        fprintf(stderr, "rpc-server: rpc_init_server - "
+                        "listen socket cannot be found\n");
         return NULL;
     }
 
@@ -67,14 +69,16 @@ rpc_server *rpc_init_server(int port) {
     err = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
                      &re, sizeof re);
     if (err == -1) {
-        fprintf(stderr, "rpc_init_server - setsockopt unsuccessful\n");
+        fprintf(stderr, "rpc-server: rpc_init_server - "
+                        "setsockopt unsuccessful\n");
         return NULL;
     }
 
     // bind to the appropriate address and listen
     err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
     if (err == -1) {
-        fprintf(stderr, "rpc_init_server - listen socket cannot be bound\n");
+        fprintf(stderr, "rpc-server: rpc_init_server - "
+                        "listen socket cannot be bound\n");
         return NULL;
     }
     freeaddrinfo(results);
@@ -84,7 +88,7 @@ rpc_server *rpc_init_server(int port) {
     // initializing rpc server structure and add its listener
     struct rpc_server* server = (struct rpc_server*) malloc(sizeof (struct rpc_server));
     assert(server);
-    server->listen_fd = &listen_fd;
+    server->listen_fd = listen_fd;
     server->functions = queue_init();
     assert(server->listen_fd && server->functions);
     return server;
@@ -100,14 +104,16 @@ rpc_server *rpc_init_server(int port) {
  */
 int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
     // checking if server can register the function or not
-    if (server == NULL || server->listen_fd == NULL) {
-        fprintf(stderr, "rpc_register - server is NULL or its listener is NULL\n");
+    if (server == NULL) {
+        fprintf(stderr, "rpc-server: rpc_register - "
+                        "server is NULL or its listener is NULL\n");
         return -1;
     }
     // initialize function for registration
     function_t* f = function_init(name, handler);
     if (f == NULL) {
-        fprintf(stderr, "rpc_register - function_init returns NULL\n");
+        fprintf(stderr, "rpc-server: rpc_register - "
+                        "function_init returns NULL\n");
         return -1;
     }
     enqueue(server->functions, f);
@@ -124,13 +130,14 @@ void rpc_serve_all(rpc_server *server) {
     // accept connection
     struct sockaddr_storage client_addr;
     socklen_t client_addr_size = sizeof client_addr;
-    int conn_fd = accept(*(server->listen_fd),
+    int conn_fd = accept(server->listen_fd,
                          (struct sockaddr*) &client_addr, &client_addr_size);
-    if (conn_fd == -1) {
-        fprintf(stderr, "rpc_serve_all - connect socket cannot accept connections\n");
+    if (conn_fd < 0) {
+        fprintf(stderr, "rpc-server: rpc_serve_all - "
+                        "connect socket cannot accept connections\n");
         return;
     }
-    server->conn_fd = &conn_fd;
+    server->conn_fd = conn_fd;
 
 
     /// DEBUGGING:
@@ -139,7 +146,7 @@ void rpc_serve_all(rpc_server *server) {
     // receive name from the connection, then process; n is number of characters read
     int n = (int) recv(conn_fd, name_buffer, 255, MSG_DONTWAIT);
     if (n < 0) {
-        fprintf(stderr, "server: rpc_serve_all - cannot read from client\n");
+        fprintf(stderr, "rpc-server: rpc_serve_all - cannot read from client\n");
         exit(EXIT_FAILURE);
     }
     // Null-terminate string
@@ -202,17 +209,13 @@ void rpc_serve_all(rpc_server *server) {
                         "cannot send the response to client\n");
         exit(EXIT_FAILURE);
     }
-
     ///
-
 
     // close the sockets and free structures
     rpc_data_free(data);
-    close(*(server->listen_fd));
-    close(*(server->conn_fd));
+    close(server->listen_fd);
+    close(server->conn_fd);
     free_queue(server->functions);
-    free(server->listen_fd);
-    free(server->conn_fd);
     free(server);
 }
 
@@ -256,7 +259,9 @@ rpc_client *rpc_init_client(char *addr, int port) {
     // get the appropriate address of server
     struct addrinfo* result = results;
     for (; result != NULL; result = result->ai_next) {
-        sock_fd = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+        sock_fd = socket(result->ai_family,
+                         result->ai_socktype,
+                         result->ai_protocol);
         if (sock_fd == -1)
             continue;
         err = connect(sock_fd, result->ai_addr, result->ai_addrlen);

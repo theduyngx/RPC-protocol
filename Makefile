@@ -18,6 +18,8 @@ CLI_SRV = client-server
 SRC_DIR = src
 INC_DIR = include/
 OUT_DIR = out
+
+# object flags
 RPC_SYS = rpc.o
 SYS_REQ = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(INC_DIR)*.h)
 
