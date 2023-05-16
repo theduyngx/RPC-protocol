@@ -3,6 +3,9 @@
  * File    : function_queue.c
  * Purpose : Functions related to the function structure and queue structure for storing said
  *           function structure in RPC.
+ *
+ * The function queue holds different, unique functions with no duplicates. This will be checked
+ * whenever adding another function to the queue.
  */
 
 #include <stdlib.h>
@@ -10,6 +13,20 @@
 #include <string.h>
 #include <stdio.h>
 #include "function_queue.h"
+
+
+/**
+ * DJB2 hash to hash strings.
+ * @param str specified string
+ * @return    hashed string value
+ */
+unsigned long hash(unsigned char* str) {
+    unsigned long hash_val = 5381;
+    int c;
+    while ((c = *str++))
+        hash_val = ((hash_val << 5) + hash_val) + c;
+    return hash_val;
+}
 
 
 /**
@@ -38,6 +55,8 @@ function_t* function_init(char* f_name, rpc_handler f_handler) {
     }
     function_t* f = (function_t*) malloc(sizeof(function_t));
     assert(f);
+    unsigned long id = hash((unsigned char*) f_name);
+    f->id = id;
     f->f_name = f_name;
     f->f_handler = f_handler;
     assert(f->f_name && f->f_handler);
@@ -70,17 +89,32 @@ queue_f* queue_init() {
 
 /**
  * Enqueue a process to a given queue.
- * @param q  the given queue
- * @param f  the function to be enqueued
+ * @param  q  the given queue
+ * @param  f  the function to be enqueued
+ * @return    0 if enqueued successfully, 1 if not, and -1 if execution fails
  */
-void enqueue(queue_f* q, function_t* f) {
+int enqueue(queue_f* q, function_t* f) {
     assert(q);
     assert(q->last);
-    if (! f) return;
+    if (! f) return -1;
+
+    // ensure uniqueness in registration
+    qnode_f* curr = q->node;
+    for (; curr != NULL; curr = curr->next) {
+        function_t* f_curr = curr->function;
+        if (f_curr->id == f->id) {
+            // just for debugging
+            assert(strcmp(f_curr->f_name, f->f_name) == 0);
+            printf("server: function_queue: function %s already exists", f->f_name);
+            return 1;
+        }
+        assert(strcmp(f_curr->f_name, f->f_name) != 0);
+    }
     q->last->function = f;
     q->last->next = qnode_init();
     q->last = q->last->next;
     (q->size)++;
+    return 0;
 }
 
 /**

@@ -15,6 +15,7 @@
 
 /* function */
 struct function {
+    unsigned long id;
     char* f_name;
     rpc_handler f_handler;
 };
@@ -39,7 +40,7 @@ typedef struct queue queue_f;
 
 /* queue functions */
 queue_f* queue_init();
-void enqueue(queue_f* q, function_t* f);
+int enqueue(queue_f* q, function_t* f);
 function_t* dequeue(queue_f* q);
 void free_queue(queue_f* q);
 
