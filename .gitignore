@@ -1,5 +1,5 @@
-client
-server
+rpc-client
+rpc-server
 rpc
 *.o
 /.idea

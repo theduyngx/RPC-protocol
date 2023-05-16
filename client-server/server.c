@@ -16,8 +16,11 @@ rpc_data* add2_i8(rpc_data*);
  * Main entry to the server.
  * @return 0 if execution is successful
  */
-int main(int argc, char* argv[]) {
+int main(int argc, char** argv) {
     rpc_server *state;
+    for (int i=0; i < argc; i++) {
+        printf("%s\n", argv[i]);
+    }
 
     state = rpc_init_server(3000);
     if (state == NULL) {
