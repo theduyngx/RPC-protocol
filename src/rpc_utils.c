@@ -48,14 +48,14 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
  * @param ret    the returned value
  * @return       0 if successful, and otherwise if not
  */
-int rpc_receive_int(int socket, int64_t* ret) {
+int rpc_receive_int(int socket, int* ret) {
     int64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, MSG_DONTWAIT);
     if (n < 0) return 1;
-    *ret = ntohl(ret_ntw);
+    int64_t ret64 = ntohl(ret_ntw);
     // negative integer conversion
-    if (*ret >= INT_MAX)
-        *ret = -(int) (- *ret);
+    if (ret64 >= INT_MAX)
+        *ret = -(int) (-ret64);
     return 0;
 }
 
@@ -77,7 +77,7 @@ int rpc_send_uint(int socket, uint64_t val) {
  * @param ret    the sent value
  * @return       0 if successful, and otherwise if not
  */
-int rpc_send_int(int socket, int64_t val) {
+int rpc_send_int(int socket, int val) {
     uint64_t val_ntw = htonl(val);
     ssize_t n = send(socket, &val_ntw, sizeof val_ntw, MSG_DONTWAIT);
     return (n < 0);
@@ -124,7 +124,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
 
     // for data2 - due to it being size_t, it may exceed pivot
     size_t data_curr = data2_len;
-    int64_t num_exceed = 0;
+    int num_exceed = 0;
     while (data_curr > pivot) {
         num_exceed++;
         data_curr -= pivot;
@@ -139,7 +139,6 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     // then, the remainder
-    assert(data_curr < UINT_MAX);
     err = rpc_send_uint(socket, data_curr);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_send_payload - "
@@ -148,7 +147,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     // receive flag from server, if it is -1, then that means the size of the payload exceeds limit
-    int64_t flag;
+    int flag;
     err = rpc_receive_int(socket, &flag);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_send_payload - "
@@ -184,7 +183,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
 rpc_data* rpc_receive_payload(int socket) {
     // receive data1
     int err;
-    int64_t data1;
+    int data1;
     err = rpc_receive_int(socket, &data1);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_receive_payload - "
@@ -210,7 +209,7 @@ rpc_data* rpc_receive_payload(int socket) {
     }
 
     // receive number of times taken to send data2_len
-    int64_t num_send;
+    int num_send;
     err = rpc_receive_int(socket, &num_send);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_receive_payload - "
@@ -228,12 +227,17 @@ rpc_data* rpc_receive_payload(int socket) {
         return NULL;
     }
 
-    // get this system's SIZE_MAX, viz. the maximum object size possible for the architecture
-    // compare that with the pivot INT_MAX * number of times taken + remainder
-    // if that number exceeded, send error message, rpc_data size exceeded
-    size_t total = pivot * num_send + remainder;
-    int64_t flag = 0;
-    if (SIZE_MAX < total) flag = -1;
+    // to really compare against SIZE_MAX, we cannot do it directly (looped to 0 if exceeded)
+    int flag = 0;
+    uint64_t intervals = SIZE_MAX / pivot;
+    // so, we compare num_send against number of times taken for pivot to reach SIZE_MAX
+    if (intervals > num_send)
+        flag = -1;
+    else if (intervals == num_send) {
+        uint64_t interval_remainder = SIZE_MAX % pivot;
+        if (interval_remainder <= remainder) flag = -1;
+    }
+
     err = rpc_send_int(socket, flag);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_receive_payload - "
@@ -244,6 +248,7 @@ rpc_data* rpc_receive_payload(int socket) {
         return NULL;
 
     // otherwise, receive the package
+    size_t total = pivot * num_send + remainder;
     char buffer[total+1];
     ssize_t n = recv(socket, buffer, total, MSG_DONTWAIT);
     if (n < 0) {
@@ -258,8 +263,7 @@ rpc_data* rpc_receive_payload(int socket) {
 
     // return the payload
     rpc_data* payload = (rpc_data*) malloc(sizeof(rpc_data));
-    /// NOTE: BAD -> type-casting int64 to int
-    payload->data1 = (int) data1;
+    payload->data1 = data1;
     payload->data2_len = total;
     payload->data2 = data2;
     return payload;

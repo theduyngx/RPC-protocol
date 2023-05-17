@@ -11,7 +11,6 @@
 #include <string.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <limits.h>
 
 #include "rpc.h"
 #include "rpc_server.h"
@@ -248,7 +247,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     }
 
     // Read the function's id from server
-    int64_t id = -1;
+    int id = -1;
     err = rpc_receive_int(client->sock_fd, &id);
     if (err) {
         fprintf(stderr, "client: rpc_find - "
@@ -263,7 +262,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
         return NULL;
     }
     // DEBUG
-    printf("client: received function id = %lu\n", id);
+    printf("client: received function id = %d\n", id);
 
     // get the function handle
     rpc_handle* handle = (rpc_handle*) malloc(sizeof(rpc_handle));
