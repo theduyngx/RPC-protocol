@@ -8,6 +8,7 @@
 #ifndef PROJECT1_CLION_UTILS_H
 #define PROJECT1_CLION_UTILS_H
 
+#include <stdint.h>
 #include "rpc.h"
 
 #define MIN_NAME_LEN 3
@@ -15,7 +16,7 @@
 
 /* function */
 struct function {
-    unsigned long id;
+    uint64_t id;
     char* f_name;
     rpc_handler f_handler;
 };

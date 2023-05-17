@@ -52,7 +52,6 @@ int main(int argc, char** argv) {
 
     // serve the clients
     rpc_serve_all(state);
-    return 0;
 }
 
 

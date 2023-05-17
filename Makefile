@@ -27,7 +27,8 @@ SRC_OBJ = $(filter-out $(RPC_SYS), $(patsubst $(SRC_DIR)%.c, %.o, $(wildcard $(S
 
 
 # all executables
-all: $(RPC_SYS_A) $(SRV) $(CLI)
+all:
+	$(RPC_SYS_A) $(SRV) $(CLI)
 
 # RPC executable
 $(RPC_SYS): $(SYS_REQ)

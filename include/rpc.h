@@ -40,7 +40,7 @@ rpc_server* rpc_init_server(int port);
 int rpc_register(rpc_server* server, char* name, rpc_handler handler);
 
 /* Start serving requests */
-void rpc_serve_all(rpc_server* server);
+_Noreturn void rpc_serve_all(rpc_server* server);
 
 /* ---------------- */
 /* Client functions */
