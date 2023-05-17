@@ -283,6 +283,7 @@ rpc_data* rpc_call(rpc_client *client, __attribute__((unused)) rpc_handle* handl
     // send payload to server
     int err;
     err = rpc_send_payload(client->sock_fd, payload);
+    rpc_data_free(payload);
     // error messages are implicit in function call
     if (err)
         return NULL;

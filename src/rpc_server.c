@@ -5,7 +5,6 @@
  */
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <netdb.h>
@@ -76,39 +75,26 @@ function_t* rpc_serve_find(struct rpc_server* server) {
  * @return        0 if successful, and otherwise if not
  */
 int rpc_serve_call(struct rpc_server* server, rpc_handler handler) {
-    ssize_t n;
-
     // we must read the function's payload
-    n = recv(server->conn_fd, "", 255, MSG_DONTWAIT);
-    if (n < 0) {
-        fprintf(stderr, "server: rpc_serve_all - cannot read "
-                        "required parameters for function call from client\n");
-        return -1;
+    int err;
+    rpc_data* payload = rpc_receive_payload(server->conn_fd);
+    if (payload == NULL) {
+        err = -1;
+        goto cleanup;
     }
 
-    rpc_data *data = (rpc_data *) malloc(sizeof(rpc_data));
-    memcpy(data, "", sizeof "");
+    // call the function
+    rpc_data* response = handler(payload);
 
-    // converting network byte ordering to system's
-    data->data1 = ntohs(data->data1);
-    printf("data1 = %d, data2_len = %lu", data->data1, data->data2_len);
-
-    // get the required stuff for function somehow here
-    // and importantly, send it back to client
-    rpc_data *response = handler(data);
-    memcpy("", response, sizeof *response);
-
-    /// NOTE: DOES MEMCPY USE STRLEN OR SIZEOF? REMEMBER THAT SIZE_T IS PLATFORM-DEPENDENT
-    /// ANOTHER NOTE: STRLEN / SIZEOF THE BUFFER, OR THE RESPONSE?
-    /// SHOULDN'T IT BE THE RESPONSE SO THAT THE CLIENT KNOWS WHEN TO STOP READING?
-    n = send(server->conn_fd, "", strlen(""), MSG_DONTWAIT);
-    if (n < 0) {
+    // send the response to client
+    err = rpc_send_payload(server->conn_fd, response);
+    if (err)
         fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send the response to client\n");
-        return -1;
-    }
+                        "cannot send the response data to client\n");
 
     // close the sockets and free structures
-    rpc_data_free(data);
-    return 0;
+    rpc_data_free(response);
+    cleanup:
+    rpc_data_free(payload);
+    return err;
 }
