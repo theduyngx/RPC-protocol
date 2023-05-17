@@ -8,25 +8,13 @@
  * whenever adding another function to the queue.
  */
 
-#include <stdlib.h>
-#include <assert.h>
-#include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <assert.h>
+
 #include "function_queue.h"
-
-
-/**
- * DJB2 hash to hash strings.
- * @param str specified string
- * @return    hashed string value
- */
-uint64_t hash(unsigned char* str) {
-    uint64_t hash_val = 5381;
-    int c;
-    while ((c = *str++))
-        hash_val = ((hash_val << 5) + hash_val) + c;
-    return hash_val;
-}
+#include "rpc_utils.h"
 
 
 /**
@@ -135,6 +123,34 @@ function_t* dequeue(queue_f* q) {
     (q->size)--;
     assert(q->size >= 0);
     return f;
+}
+
+/**
+ * Search for a function with the specified function name.
+ * @param functions function queue
+ * @param name      the specified function's name
+ * @return          NULL if no function of name found,
+ *                  or the function structure if found
+ */
+function_t* search(queue_f* functions, char* name) {
+    // hash the name
+    uint64_t hashed = hash((unsigned char*) name);
+
+    // check if the function of requested id exists
+    qnode_f *curr = functions->node;
+    for (int i=0; i < functions->size; i++) {
+        if (hashed == curr->function->id)
+            break;
+
+        ///
+        //char *curr_name = curr->function->f_name;
+        //if (strncmp(curr_name, name, len) == 0)
+        //    break;
+        ///
+        curr = curr->next;
+    }
+    if (curr == NULL) return NULL;
+    return curr->function;
 }
 
 /**

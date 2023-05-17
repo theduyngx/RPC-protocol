@@ -43,6 +43,7 @@ typedef struct queue queue_f;
 queue_f* queue_init();
 int enqueue(queue_f* q, function_t* f);
 function_t* dequeue(queue_f* q);
+function_t* search(queue_f* functions, char* name);
 void free_queue(queue_f* q);
 
 #endif //PROJECT1_CLION_UTILS_H
