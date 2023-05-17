@@ -10,38 +10,39 @@ CFLAGS += $(INC)
 # client-server executable tags
 SRV     = rpc-server
 CLI     = rpc-client
-SRV_C   = server.c
-CLI_C   = client.c
+SRV_C   = server.a
+CLI_C   = client.a
 
 # paths
-CLI_SRV = client-server
-SRC_DIR = src
+CLI_SRV = client-server/
+SRC_DIR = src/
 INC_DIR = include/
-OUT_DIR = out
+OUT_DIR = out/
 
 # object flags
+RPC_SYS_A = rpc.a
 RPC_SYS = rpc.o
-SYS_REQ = $(SRC_DIR)/rpc.c $(INC_DIR)/rpc.h
-SRC_OBJ = $(filter-out $(RPC_SYS), $(patsubst $(SRC_DIR)/%.c, %.o, $(wildcard $(SRC_DIR)/*.c)))
+SYS_REQ = $(SRC_DIR)rpc.c $(INC_DIR)rpc.h
+SRC_OBJ = $(filter-out $(RPC_SYS), $(patsubst $(SRC_DIR)%.c, %.o, $(wildcard $(SRC_DIR)*.c)))
 
 
 # all executables
-all: $(SRC_OBJ) $(RPC_SYS) $(SRV) $(CLI)
+all: $(RPC_SYS_A) $(SRV) $(CLI)
 
 # RPC executable
 $(RPC_SYS): $(SYS_REQ)
 	$(CC) $(CFLAGS) $(C) $(O) $@ $<
 
 # client-server executables
-$(SRV): $(CLI_SRV)/$(SRV_C)
-	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS) $(SRC_OBJ) $(GDB)
+$(SRV): $(CLI_SRV)$(SRV_C)
+	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS_A) $(GDB)
 
-$(CLI): $(CLI_SRV)/$(CLI_C)
-	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS) $(SRC_OBJ) $(GDB)
+$(CLI): $(CLI_SRV)$(CLI_C)
+	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS_A) $(GDB)
 
 
 # object files
-%.o: $(SRC_DIR)/%.c $(INC_DIR)/%.h
+%.o: $(SRC_DIR)%.c $(INC_DIR)%.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # permitting executable
@@ -53,10 +54,10 @@ permit:
 format:
 	clang-format -style=file -i *.c *.h
 
-# RPC_SYS_A = rpc.a
-# $(RPC_SYS_A): rpc.o
-# 	ar rcs $(RPC_SYS_A) $(RPC_SYS)
+# static library
+$(RPC_SYS_A): $(RPC_SYS) $(SRC_OBJ)
+	ar rcs $(RPC_SYS_A) $(RPC_SYS) $(SRC_OBJ)
 
 # clean
 clean:
-	rm -f $(SRV) $(CLI) $(SRC_DIR)/*.o $(OUT_DIR)/*.out *.o *.out
+	rm -f $(SRV) $(CLI) $(SRC_DIR)*.o $(OUT_DIR)*.out *.o *.out

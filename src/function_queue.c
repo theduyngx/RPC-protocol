@@ -100,7 +100,7 @@ int enqueue(queue_f* q, function_t* f) {
 
     // ensure uniqueness in registration
     qnode_f* curr = q->node;
-    for (; curr != NULL; curr = curr->next) {
+    for (int i=0; i < q->size; i++) {
         function_t* f_curr = curr->function;
         if (f_curr->id == f->id) {
             // just for debugging
@@ -109,6 +109,7 @@ int enqueue(queue_f* q, function_t* f) {
             return 1;
         }
         assert(strcmp(f_curr->f_name, f->f_name) != 0);
+        curr = curr->next;
     }
     q->last->function = f;
     q->last->next = qnode_init();

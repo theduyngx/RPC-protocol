@@ -109,6 +109,7 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
                         "server is NULL or its listener is NULL\n");
         return -1;
     }
+
     // initialize function for registration
     function_t* f = function_init(name, handler);
     if (f == NULL) {
