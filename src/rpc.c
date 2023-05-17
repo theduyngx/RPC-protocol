@@ -14,6 +14,7 @@
 
 #include "rpc.h"
 #include "rpc_server.h"
+#include "rpc_utils.h"
 
 
 /**
@@ -110,8 +111,7 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
                         "function_init returns NULL\n");
         return -1;
     }
-    enqueue(server->functions, f);
-    return 0;
+    return enqueue(server->functions, f);
 }
 
 
@@ -176,7 +176,8 @@ rpc_client *rpc_init_client(char *addr, int port) {
     sprintf(port_str, "%d", port);
     err = getaddrinfo(addr, port_str, &hints, &results);
     if (err != 0) {
-        fprintf(stderr, "rpc_init_server - getaddrinfo unsuccessful\n");
+        fprintf(stderr, "rpc-client: rpc_init_server - "
+                        "getaddrinfo unsuccessful\n");
         return NULL;
     }
 
@@ -195,7 +196,8 @@ rpc_client *rpc_init_client(char *addr, int port) {
     }
     // no result address found
     if (result == NULL) {
-        fprintf(stderr, "rpc_init_client: failed to connect\n");
+        fprintf(stderr, "rpc-client: rpc_init_client - "
+                        "failed to connect\n");
         return NULL;
     }
     freeaddrinfo(results);
@@ -216,42 +218,45 @@ rpc_client *rpc_init_client(char *addr, int port) {
  * @return       the requirements to make the call (or the RPC handle), or NULL on error
  */
 rpc_handle* rpc_find(rpc_client *client, char *name) {
-    /// DEBUG
-    char buffer[256];
-    int n;
+    int err;
+
+    // Send the name's length to server
+    err = rpc_send_uint(client->sock_fd, strlen(name));
+    if (err) {
+        fprintf(stderr, "client: rpc_find - "
+                        "cannot send function's name to server\n");
+        return NULL;
+    }
 
     // Send function name to server
-    n = (int) write(client->sock_fd, name, strlen(name));
+    int n = send(client->sock_fd, name, strlen(name), MSG_DONTWAIT);
     if (n < 0) {
-        fprintf(stderr, "client: rpc_find - cannot write to socket\n");
+        fprintf(stderr, "client: rpc_find - "
+                        "cannot send function's name to server\n");
         return NULL;
     }
 
-    // Read handle from server
-    n = (int) read(client->sock_fd, buffer, 255);
-    if (n < 0) {
-        perror("read");
+    // Read the function's id from server
+    uint64_t id = -1;
+    err = rpc_receive_uint(client->sock_fd, &id);
+    if (err) {
+        fprintf(stderr, "client: rpc_find - "
+                        "cannot receive function's id from server\n");
         return NULL;
     }
-    // Null-terminate string
-    buffer[n] = '\0';
-    printf("%s\n", buffer);
+
+    // check if the function exists or not
+    if (id == -1) {
+        fprintf(stderr, "client: rpc_find - "
+                        "no function with name %s exists on server\n", name);
+        return NULL;
+    }
+    // DEBUG
+    printf("client: received function id = %lu\n", id);
 
     // get the function handle
     rpc_handle* handle = (rpc_handle*) malloc(sizeof(rpc_handle));
-    rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
-    memcpy(data, buffer, sizeof buffer);
-
-    /// NOTE:
-    // convert data to handle here
-    // obviously no parameter conversion required thus far since we are only looking at simple
-    // interface first.
-
-    // for now, let's just assume that the data1 field holds the function's id
-    handle->function_id = data->data1;
-
-    close(client->sock_fd);
-    ///
+    handle->function_id = id;
     return handle;
 }
 
@@ -265,23 +270,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
  * @return        the response data if successful, or NULL if otherwise
  */
 rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
-    // update payload to the handle
-    // use the simple interface, with only data1
-//    handle->param = payload->data1;
 
-    // that was quite an unnecessary step since eventually we will have to convert handle to
-    // rpc_data anyway, but let's just experiment a bit
-    rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
-
-    // NOT GOOD: converting unsigned long to integer
-    data->data1 = (int) handle->function_id;
-    data->data2_len = 1;
-
-    // also don't forget about ntohs and all those byte ordering conversions
-    // and then send back to server i guess
-
-    /// NOTE: make a module with functionalities related to sending and receiving packets!!!
-    /// It is apparent that we use this a lot back and forth so it is better to be efficient.
     return NULL;
 }
 
