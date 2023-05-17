@@ -103,6 +103,14 @@ int enqueue(queue_f* q, function_t* f) {
     q->last->next = qnode_init();
     q->last = q->last->next;
     (q->size)++;
+
+    ///
+    printf("\n");
+    printf("ENQUEUE: name %s\n", f->f_name);
+    printf("ENQUEUE: id %lu\n", f->id);
+    printf("\n");
+    ///
+
     return 0;
 }
 
@@ -134,19 +142,20 @@ function_t* dequeue(queue_f* q) {
  */
 function_t* search(queue_f* functions, char* name) {
     // hash the name
+
+    /////
     uint64_t hashed = hash((unsigned char*) name);
+    printf("\n");
+    printf("SEARCH: function name is %s\n", name);
+    printf("SEARCH: function hashed is %lu\n", hashed);
+    printf("\n");
+    /////
 
     // check if the function of requested id exists
     qnode_f *curr = functions->node;
     for (int i=0; i < functions->size; i++) {
-//        if (hashed == curr->function->id)
-//            break;
-
-        ///
-        char *curr_name = curr->function->f_name;
-        if (strncmp(curr_name, name, strlen(name)) == 0)
+        if (hashed == curr->function->id)
             break;
-        ///
         curr = curr->next;
     }
     if (curr == NULL) return NULL;
@@ -157,6 +166,7 @@ function_t* search(queue_f* functions, char* name) {
  * Free memory of given queue.
  * @param q  the queue
  */
+ __attribute__((unused))
 void free_queue(queue_f* q) {
     while (q->size > 0) dequeue(q);
     free(q);

@@ -30,12 +30,13 @@ function_t* rpc_serve_find(struct rpc_server* server) {
                         "cannot receive the length of client's requested function's name\n");
         return NULL;
     }
-    // DEBUG
+    /// DEBUG
     printf("server's received name length = %lu\n", name_len);
+    ///
 
     // receive the function's name from client
     char name_buffer[name_len+1];
-    ssize_t n = recv(server->conn_fd, name_buffer, name_len, MSG_DONTWAIT);
+    ssize_t n = recv(server->conn_fd, name_buffer, name_len, 0);
     if (n < 0) {
         fprintf(stderr, "rpc-server: rpc_serve_all - "
                         "cannot receive client's requested function name\n");
@@ -70,13 +71,28 @@ function_t* rpc_serve_find(struct rpc_server* server) {
 /**
  * Server RPC function to serve the call request from client. It will first try to receive
  * from the client the appropriate RPC data packet, and call the handler accordingly.
- * @param server  the server RPC
- * @param handler the RPC function's handler
- * @return        0 if successful, and otherwise if not
+ * @param server   the server RPC
+ * @param function the RPC function
+ * @return         0 if successful, and otherwise if not
  */
-int rpc_serve_call(struct rpc_server* server, rpc_handler handler) {
-    // we must read the function's payload
+int rpc_serve_call(struct rpc_server* server, function_t* function) {
+    // read the function's id to verify the id
     int err;
+    uint64_t id;
+    err = rpc_receive_uint(server->conn_fd, &id);
+    if (err) {
+        fprintf(stderr, "server: rpc_serve_all - "
+                        "cannot receive function's id verification from client\n");
+        return -1;
+    }
+    if (id != function->id) {
+        fprintf(stderr, "server: rpc_serve_all - "
+                        "verification failed; handle and handler have different ids\n");
+        printf("%lu %lu\n", id, function->id);
+        return -1;
+    }
+
+    // read the function's payload
     rpc_data* payload = rpc_receive_payload(server->conn_fd);
     if (payload == NULL) {
         err = -1;
@@ -84,6 +100,7 @@ int rpc_serve_call(struct rpc_server* server, rpc_handler handler) {
     }
 
     // call the function
+    rpc_handler handler = function->f_handler;
     rpc_data* response = handler(payload);
 
     // send the response to client

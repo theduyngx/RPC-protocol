@@ -36,7 +36,7 @@ uint64_t hash(unsigned char* str) {
  */
 int rpc_receive_uint(int socket, uint64_t* ret) {
     uint64_t ret_ntw;
-    ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, MSG_DONTWAIT);
+    ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
     if (n < 0) return 1;
     *ret = ntohl(ret_ntw);
     return 0;
@@ -50,12 +50,18 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
  */
 int rpc_receive_int(int socket, int* ret) {
     int64_t ret_ntw;
-    ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, MSG_DONTWAIT);
-    if (n < 0) return 1;
+    ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
+    if (n < 0) {
+        fprintf(stderr, "RPC-helper: rpc_receive_int - "
+                        "cannot receive integer\n");
+        return 1;
+    }
+
     int64_t ret64 = ntohl(ret_ntw);
     // negative integer conversion
     if (ret64 >= INT_MAX)
         *ret = -(int) (-ret64);
+    else *ret = (int) ret64;
     return 0;
 }
 
@@ -67,7 +73,7 @@ int rpc_receive_int(int socket, int* ret) {
  */
 int rpc_send_uint(int socket, uint64_t val) {
     uint64_t val_ntw = htonl(val);
-    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, MSG_DONTWAIT);
+    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
     return (n < 0);
 }
 
@@ -79,7 +85,7 @@ int rpc_send_uint(int socket, uint64_t val) {
  */
 int rpc_send_int(int socket, int val) {
     uint64_t val_ntw = htonl(val);
-    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, MSG_DONTWAIT);
+    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
     return (n < 0);
 }
 
@@ -164,7 +170,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
         char buffer[data2_len+1];
         memcpy(buffer, data2, data2_len);
         buffer[data2_len] = '\0';
-        ssize_t n = send(socket, buffer, data2_len, MSG_DONTWAIT);
+        ssize_t n = send(socket, buffer, data2_len, 0);
         if (n < 0) {
             fprintf(stderr, "rpc-helper: rpc_send_payload - "
                             "cannot send data2 to other end\n");
@@ -250,7 +256,7 @@ rpc_data* rpc_receive_payload(int socket) {
     // otherwise, receive the package
     size_t total = pivot * num_send + remainder;
     char buffer[total+1];
-    ssize_t n = recv(socket, buffer, total, MSG_DONTWAIT);
+    ssize_t n = recv(socket, buffer, total, 0);
     if (n < 0) {
         fprintf(stderr, "rpc-helper: rpc_receive_payload - "
                         "cannot receive data2 from other end\n");

@@ -19,6 +19,6 @@ struct rpc_server {
 
 /* function prototypes to serve clients */
 function_t* rpc_serve_find(struct rpc_server* server);
-int rpc_serve_call(struct rpc_server* server, rpc_handler handler);
+int rpc_serve_call(struct rpc_server* server, function_t* function);
 
 #endif //PROJECT2_RPC_SERVER_H

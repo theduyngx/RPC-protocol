@@ -141,14 +141,27 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         }
         server->conn_fd = conn_fd;
 
-        // serve rpc_find from client
-        function_t* function = rpc_serve_find(server);
-        if (function == NULL)
-            continue;
-        rpc_handler handler = function->f_handler;
+        while (1) {
+            // serve rpc_find from client
+            function_t *function = rpc_serve_find(server);
+            if (function == NULL)
+                continue;
 
-        // serve rpc_call from client
-        rpc_serve_call(server, handler);
+            // serve rpc_call from client
+            rpc_serve_call(server, function);
+
+            /// NOTE: The idea here is that the client should be able to detect when client
+            /// is calling something.
+
+            /// BUT: as we see in the API, these things are sequential, at least it appears so
+            /// Meaning client must call find first
+            /// Then after found, client must call 'call'
+            /// Then respond with payload and get server's response
+
+            /// NOTE: do not break here!!! We must more reliably check if connection has
+            /// stopped to break from client connection
+            break;
+        }
     }
 }
 
@@ -239,7 +252,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     }
 
     // Send function name to server
-    ssize_t n = send(client->sock_fd, name, name_len, MSG_DONTWAIT);
+    ssize_t n = send(client->sock_fd, name, name_len, 0);
     if (n < 0) {
         fprintf(stderr, "client: rpc_find - "
                         "cannot send function's name to server\n");
@@ -261,8 +274,12 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
                         "no function with name %s exists on server\n", name);
         return NULL;
     }
-    // DEBUG
+
+    ///
+    printf("\n");
     printf("client: received function id = %d\n", id);
+    printf("\n");
+    ///
 
     // get the function handle
     rpc_handle* handle = (rpc_handle*) malloc(sizeof(rpc_handle));
@@ -279,9 +296,18 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
  * @param payload the RPC payload (the data to send to server)
  * @return        the response data if successful, or NULL if otherwise
  */
-rpc_data* rpc_call(rpc_client *client, __attribute__((unused)) rpc_handle* handle, rpc_data* payload) {
-    // send payload to server
+rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
+    // send function's id for verification
     int err;
+    err = rpc_send_uint(client->sock_fd, handle->function_id);
+    if (err) {
+        fprintf(stderr, "rpc-client: rpc_call - "
+                        "cannot send handle to server for verification\n");
+        rpc_data_free(payload);
+        return NULL;
+    }
+
+    // send payload to server
     err = rpc_send_payload(client->sock_fd, payload);
     rpc_data_free(payload);
     // error messages are implicit in function call
