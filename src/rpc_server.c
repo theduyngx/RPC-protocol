@@ -36,7 +36,7 @@ function_t* rpc_serve_find(struct rpc_server* server) {
 
     // receive the function's name from client
     char name_buffer[name_len+1];
-    int n = recv(server->conn_fd, name_buffer, name_len, MSG_DONTWAIT);
+    ssize_t n = recv(server->conn_fd, name_buffer, name_len, MSG_DONTWAIT);
     if (n < 0) {
         fprintf(stderr, "rpc-server: rpc_serve_all - "
                         "cannot receive client's requested function name\n");
@@ -76,7 +76,7 @@ function_t* rpc_serve_find(struct rpc_server* server) {
  * @return        0 if successful, and otherwise if not
  */
 int rpc_serve_call(struct rpc_server* server, rpc_handler handler) {
-    int n;
+    ssize_t n;
 
     // we must read the function's payload
     n = recv(server->conn_fd, "", 255, MSG_DONTWAIT);

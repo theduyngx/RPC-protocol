@@ -139,13 +139,13 @@ function_t* search(queue_f* functions, char* name) {
     // check if the function of requested id exists
     qnode_f *curr = functions->node;
     for (int i=0; i < functions->size; i++) {
-        if (hashed == curr->function->id)
-            break;
+//        if (hashed == curr->function->id)
+//            break;
 
         ///
-        //char *curr_name = curr->function->f_name;
-        //if (strncmp(curr_name, name, len) == 0)
-        //    break;
+        char *curr_name = curr->function->f_name;
+        if (strncmp(curr_name, name, strlen(name)) == 0)
+            break;
         ///
         curr = curr->next;
     }

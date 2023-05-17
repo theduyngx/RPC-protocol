@@ -11,6 +11,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <unistd.h>
+#include <limits.h>
 
 #include "rpc.h"
 #include "rpc_server.h"
@@ -24,8 +25,15 @@
  * @return     NULL if unsuccessful, or the server RPC if otherwise
  */
 rpc_server *rpc_init_server(int port) {
-    int listen_fd = 0, re = 1;
+    // sockets
+    int listen_fd = 0;
     struct addrinfo hints, *results;
+
+    // timeout
+    struct timeval timeout = {
+        .tv_sec = 5,
+        .tv_usec = 0
+    };
 
     // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
     memset(&hints, 0, sizeof hints);
@@ -61,8 +69,8 @@ rpc_server *rpc_init_server(int port) {
 
     // set options to reusable address
     err = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
-                     &re, sizeof re);
-    if (err == -1) {
+                     &timeout, sizeof timeout);
+    if (err < 0) {
         fprintf(stderr, "rpc-server: rpc_init_server - "
                         "setsockopt unsuccessful\n");
         return NULL;
@@ -121,8 +129,8 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
  * @param server the server RPC
  */
 _Noreturn void rpc_serve_all(rpc_server *server) {
-    // accept connection
     while (1) {
+        // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
         socklen_t client_addr_size = sizeof client_addr;
         int conn_fd = accept(server->listen_fd,
@@ -136,6 +144,8 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
 
         // serve rpc_find from client
         function_t* function = rpc_serve_find(server);
+        if (function == NULL)
+            continue;
         rpc_handler handler = function->f_handler;
 
         // serve rpc_call from client
@@ -162,7 +172,7 @@ struct rpc_handle {
  * @param port the port number
  * @return     client RPC if successful, or NULL if otherwise
  */
-rpc_client *rpc_init_client(char *addr, int port) {
+rpc_client* rpc_init_client(char *addr, int port) {
     int sock_fd = 0, err;
     struct addrinfo hints, *results;
 
@@ -221,7 +231,8 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     int err;
 
     // Send the name's length to server
-    err = rpc_send_uint(client->sock_fd, strlen(name));
+    uint64_t name_len = strlen(name);
+    err = rpc_send_uint(client->sock_fd, name_len);
     if (err) {
         fprintf(stderr, "client: rpc_find - "
                         "cannot send function's name to server\n");
@@ -229,7 +240,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     }
 
     // Send function name to server
-    int n = send(client->sock_fd, name, strlen(name), MSG_DONTWAIT);
+    ssize_t n = send(client->sock_fd, name, name_len, MSG_DONTWAIT);
     if (n < 0) {
         fprintf(stderr, "client: rpc_find - "
                         "cannot send function's name to server\n");
@@ -237,8 +248,8 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     }
 
     // Read the function's id from server
-    uint64_t id = -1;
-    err = rpc_receive_uint(client->sock_fd, &id);
+    int64_t id = -1;
+    err = rpc_receive_int(client->sock_fd, &id);
     if (err) {
         fprintf(stderr, "client: rpc_find - "
                         "cannot receive function's id from server\n");
@@ -269,9 +280,17 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
  * @param payload the RPC payload (the data to send to server)
  * @return        the response data if successful, or NULL if otherwise
  */
-rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
+rpc_data* rpc_call(rpc_client *client, __attribute__((unused)) rpc_handle* handle, rpc_data* payload) {
+    // send payload to server
+    int err;
+    err = rpc_send_payload(client->sock_fd, payload);
+    // error messages are implicit in function call
+    if (err)
+        return NULL;
 
-    return NULL;
+    // receive payload from server
+    rpc_data* response = rpc_receive_payload(client->sock_fd);
+    return response;
 }
 
 
