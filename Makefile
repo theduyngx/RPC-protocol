@@ -21,18 +21,12 @@ OUT_DIR = out/
 
 # object flags
 RPC_SYS_A = rpc.a
-RPC_SYS = rpc.o
 SYS_REQ = $(SRC_DIR)rpc.c $(INC_DIR)rpc.h
-SRC_OBJ = $(filter-out $(RPC_SYS), $(patsubst $(SRC_DIR)%.c, %.o, $(wildcard $(SRC_DIR)*.c)))
+SRC_OBJ = $(patsubst $(SRC_DIR)%.c, $(OUT_DIR)%.o, $(wildcard $(SRC_DIR)*.c))
 
 
 # all executables
-all:
-	$(RPC_SYS_A) $(SRV) $(CLI)
-
-# RPC executable
-$(RPC_SYS): $(SYS_REQ)
-	$(CC) $(CFLAGS) $(C) $(O) $@ $<
+all: $(RPC_SYS_A) $(SRV) $(CLI)
 
 # client-server executables
 $(SRV): $(CLI_SRV)$(SRV_C)
@@ -43,7 +37,7 @@ $(CLI): $(CLI_SRV)$(CLI_C)
 
 
 # object files
-%.o: $(SRC_DIR)%.c $(INC_DIR)%.h
+$(OUT_DIR)%.o: $(SRC_DIR)%.c $(INC_DIR)%.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 # permitting executable
@@ -55,10 +49,10 @@ permit:
 format:
 	clang-format -style=file -i *.c *.h
 
-# static library
-$(RPC_SYS_A): $(RPC_SYS) $(SRC_OBJ)
-	ar rcs $(RPC_SYS_A) $(RPC_SYS) $(SRC_OBJ)
+# RPC library
+$(RPC_SYS_A): $(SRC_OBJ)
+	ar rcs $@ $(SRC_OBJ)
 
 # clean
 clean:
-	rm -f $(SRV) $(CLI) $(SRC_DIR)*.o $(OUT_DIR)*.out *.o *.out
+	rm -f $(SRV) $(CLI) $(SRC_DIR)*.o $(OUT_DIR)*.o $(OUT_DIR)*.out *.o *.out *.a

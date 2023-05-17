@@ -1,6 +1,7 @@
 rpc-client
 rpc-server
 rpc
+*.a
 *.o
 /.idea
 CMakeLists.txt
