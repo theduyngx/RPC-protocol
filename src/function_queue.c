@@ -20,8 +20,8 @@
  * @param str specified string
  * @return    hashed string value
  */
-unsigned long hash(unsigned char* str) {
-    unsigned long hash_val = 5381;
+uint64_t hash(unsigned char* str) {
+    uint64_t hash_val = 5381;
     int c;
     while ((c = *str++))
         hash_val = ((hash_val << 5) + hash_val) + c;
@@ -36,7 +36,7 @@ unsigned long hash(unsigned char* str) {
  * @return          the function
  */
 function_t* function_init(char* f_name, rpc_handler f_handler) {
-    unsigned long name_len = strlen(f_name);
+    uint64_t name_len = strlen(f_name);
     if (name_len < MIN_NAME_LEN) {
         fprintf(stderr, "function_init - name length = %lu, "
                         "below minimal threshold %d\n",
@@ -55,7 +55,7 @@ function_t* function_init(char* f_name, rpc_handler f_handler) {
     }
     function_t* f = (function_t*) malloc(sizeof(function_t));
     assert(f);
-    unsigned long id = hash((unsigned char*) f_name);
+    uint64_t id = hash((unsigned char*) f_name);
     f->id = id;
     f->f_name = f_name;
     f->f_handler = f_handler;

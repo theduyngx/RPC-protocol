@@ -11,16 +11,9 @@
 #include <string.h>
 #include <netdb.h>
 #include <unistd.h>
+
 #include "rpc.h"
-#include "function_queue.h"
-
-
-/* RPC server structure */
-struct rpc_server {
-    int listen_fd;
-    int conn_fd;
-    queue_f* functions;
-};
+#include "rpc_server.h"
 
 
 /**
@@ -127,97 +120,27 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
  * function as requested.
  * @param server the server RPC
  */
-void rpc_serve_all(rpc_server *server) {
+_Noreturn void rpc_serve_all(rpc_server *server) {
     // accept connection
-    struct sockaddr_storage client_addr;
-    socklen_t client_addr_size = sizeof client_addr;
-    int conn_fd = accept(server->listen_fd,
-                         (struct sockaddr*) &client_addr, &client_addr_size);
-    if (conn_fd < 0) {
-        fprintf(stderr, "rpc-server: rpc_serve_all - "
-                        "connect socket cannot accept connections\n");
-        return;
+    while (1) {
+        struct sockaddr_storage client_addr;
+        socklen_t client_addr_size = sizeof client_addr;
+        int conn_fd = accept(server->listen_fd,
+                             (struct sockaddr *) &client_addr, &client_addr_size);
+        if (conn_fd < 0) {
+            fprintf(stderr, "rpc-server: rpc_serve_all - "
+                            "connect socket cannot accept connections\n");
+            continue;
+        }
+        server->conn_fd = conn_fd;
+
+        // serve rpc_find from client
+        function_t* function = rpc_serve_find(server);
+        rpc_handler handler = function->f_handler;
+
+        // serve rpc_call from client
+        rpc_serve_call(server, handler);
     }
-    server->conn_fd = conn_fd;
-
-
-    /// DEBUGGING:
-    char data_buffer[256];
-    char name_buffer[256];
-    // receive name from the connection, then process; n is number of characters read
-    int n = (int) recv(conn_fd, name_buffer, 255, MSG_DONTWAIT);
-    if (n < 0) {
-        fprintf(stderr, "rpc-server: rpc_serve_all - cannot read from client\n");
-        exit(EXIT_FAILURE);
-    }
-    // Null-terminate string
-    name_buffer[n] = '\0';
-
-    // check for name - of course bunch of issues here - buffer size not returned correctly, etc.
-    // so this string comparison is really not quite valid
-    qnode_f* curr = server->functions->node;
-    for (; curr != NULL; curr = curr->next) {
-        char* curr_name = curr->function->f_name;
-        if (strncmp(curr_name, name_buffer, strlen(curr_name)) == 0)
-            break;
-    }
-    if (curr == NULL)
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot find requested function's name\n");
-
-    // get the function handler corresponding to the request
-    rpc_handler f_handler = curr->function->f_handler;
-
-    // Send back data packet back with some things and let client convert that to the RPC handle
-    // this is probably where you send the RPC data packet
-    // if the function requires only a single parameter, then simply ask for a single integer
-    // otherwise, it must ask for the data2_len and data2
-
-    char* some_handle = "This needs to be some handle\n";
-    n = (int) send(conn_fd, some_handle, strlen(some_handle), MSG_DONTWAIT);
-    if (n < 0) {
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send the packet to client after function handler has been found\n");
-        exit(EXIT_FAILURE);
-    }
-
-    // after that, we must read, or receive from client's again, this is when client calls rpc_call
-    n = (int) recv(conn_fd, data_buffer, 255, MSG_DONTWAIT);
-    if (n < 0) {
-        fprintf(stderr, "server: rpc_serve_all - cannot read "
-                        "required parameters for function call from client\n");
-        exit(EXIT_FAILURE);
-    }
-
-    rpc_data* data = (rpc_data*) malloc(sizeof(rpc_data));
-    memcpy(data, data_buffer, sizeof data_buffer);
-
-    // converting network byte ordering to system's
-    data->data1 = ntohs(data->data1);
-    printf("data1 = %d, data2_len = %lu", data->data1, data->data2_len);
-
-    // get the required stuff for function somehow here
-    // and importantly, send it back to client
-    rpc_data* response = f_handler(data);
-    memcpy(data_buffer, response, sizeof *response);
-
-    /// NOTE: DOES MEMCPY USE STRLEN OR SIZEOF? REMEMBER THAT SIZE_T IS PLATFORM-DEPENDENT
-    /// ANOTHER NOTE: STRLEN / SIZEOF THE BUFFER, OR THE RESPONSE?
-    /// SHOULDN'T IT BE THE RESPONSE SO THAT THE CLIENT KNOWS WHEN TO STOP READING?
-    n = (int) send(conn_fd, data_buffer, strlen(data_buffer), MSG_DONTWAIT);
-    if (n < 0) {
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send the response to client\n");
-        exit(EXIT_FAILURE);
-    }
-    ///
-
-    // close the sockets and free structures
-    rpc_data_free(data);
-    close(server->listen_fd);
-    close(server->conn_fd);
-    free_queue(server->functions);
-    free(server);
 }
 
 
@@ -228,17 +151,7 @@ struct rpc_client {
 
 /* RPC handle structure */
 struct rpc_handle {
-    unsigned long function_id;
-    // do we have to store like the list of parameters required here?
-    // if so, we know:
-    //  1. rpc_data is context-sensitive, as in depending on the context, different conversion occurs
-    //  2. rpc_data must be converted to rpc_handle, including the num_param and param_list
-    //  3. the handle must later be re-converted to handle so that it can be sent through the network
-    //  4. the server must be context-sensitive with rpc_data and understand how to convert that to
-    //     each required parameter
-
-    // for now, we'll just go with the simple single-parameter interface
-    int param;
+    uint64_t function_id;
 };
 
 
@@ -354,7 +267,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
 rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     // update payload to the handle
     // use the simple interface, with only data1
-    handle->param = payload->data1;
+//    handle->param = payload->data1;
 
     // that was quite an unnecessary step since eventually we will have to convert handle to
     // rpc_data anyway, but let's just experiment a bit
@@ -363,10 +276,6 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     // NOT GOOD: converting unsigned long to integer
     data->data1 = (int) handle->function_id;
     data->data2_len = 1;
-
-    // not sure what was happening here, needed to revise how to pass this
-    char param = (char) handle->param;
-    data->data2 = &param;
 
     // also don't forget about ntohs and all those byte ordering conversions
     // and then send back to server i guess
