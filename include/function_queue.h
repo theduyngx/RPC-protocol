@@ -12,7 +12,7 @@
 #include "rpc.h"
 
 
-/* function */
+/* function data structure */
 struct function {
     uint64_t id;
     char* f_name;
@@ -20,6 +20,7 @@ struct function {
 };
 typedef struct function function_t;
 
+/* function structure initialization */
 function_t* function_init(char* f_name, rpc_handler f_handler);
 
 /* node data structure */

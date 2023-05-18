@@ -16,6 +16,7 @@
 #include "rpc_server.h"
 #include "rpc_utils.h"
 
+#define NONBLOCKING
 #define FIND_SERVICE (int) 0
 #define CALL_SERVICE (int) 1
 
@@ -139,6 +140,7 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 _Noreturn void rpc_serve_all(rpc_server *server) {
     char* TITLE = "rpc-server: rpc_serve_all";
 
+    int pid;
     while (1) {
         // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
@@ -151,13 +153,27 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         }
         server->conn_fd = conn_fd;
 
-        // receive flag to check which service server must provide
-        int flag = ERROR;
-        while (rpc_receive_int(server->conn_fd, &flag) == 0) {
-            if      (flag == FIND_SERVICE) rpc_serve_find(server);
-            else if (flag == CALL_SERVICE) rpc_serve_call(server);
-            else    break;
+        /// Create a new process
+        pid = fork();
+        if (pid < 0) {
+            print_error(TITLE, "connection process cannot be created");
+            continue;
         }
+        // child process
+        if (pid == 0) {
+            close(server->listen_fd);
+            // receive flag to check which service server must provide
+            int flag = ERROR;
+            while (rpc_receive_int(server->conn_fd, &flag) == 0) {
+                if      (flag == FIND_SERVICE) rpc_serve_find(server);
+                else if (flag == CALL_SERVICE) rpc_serve_call(server);
+                else    break;
+            }
+            close(server->conn_fd);
+        }
+        // parent process
+        else
+            close(server->conn_fd);
     }
 }
 
@@ -208,11 +224,9 @@ rpc_client* rpc_init_client(char *addr, int port) {
         sock_fd = socket(result->ai_family,
                          result->ai_socktype,
                          result->ai_protocol);
-        if (sock_fd < 0)
-            continue;
+        if (sock_fd < 0) continue;
         err = connect(sock_fd, result->ai_addr, result->ai_addrlen);
-        if (err != -1)
-            break;
+        if (err != -1) break;
         close(sock_fd);
     }
     // no result address found
