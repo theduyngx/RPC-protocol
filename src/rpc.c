@@ -11,7 +11,6 @@
 #include <string.h>
 #include <netdb.h>
 #include <signal.h>
-#include <sys/wait.h>
 
 #include "rpc.h"
 #include "rpc_server.h"
@@ -39,11 +38,11 @@ rpc_server *rpc_init_server(int port) {
     int listen_fd = 0;
     struct addrinfo hints, *results;
 
-    // timeout
-    struct timeval timeout = {
-        .tv_sec  = 10,
-        .tv_usec = 0
-    };
+//    // timeout
+//    struct timeval timeout = {
+//        .tv_sec  = 10,
+//        .tv_usec = 0
+//    };
 
     // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
     memset(&hints, 0, sizeof hints);
@@ -79,10 +78,10 @@ rpc_server *rpc_init_server(int port) {
     int re = 1;
     err  = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
                       &re, sizeof re);
-    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
-                      &timeout, sizeof timeout);
-    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
-                      &timeout, sizeof timeout);
+//    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
+//                      &timeout, sizeof timeout);
+//    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
+//                      &timeout, sizeof timeout);
     if (err < 0) {
         print_error(TITLE, "setsockopt unsuccessful");
         return NULL;
@@ -103,6 +102,7 @@ rpc_server *rpc_init_server(int port) {
     assert(server);
     server->listen_fd = listen_fd;
     server->functions = queue_init();
+    server->recent_pid = -1;
     assert(server->listen_fd && server->functions);
     return server;
 }
@@ -154,6 +154,8 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
             continue;
         }
         server->conn_fd = conn_fd;
+        if (server->recent_pid != -1)
+            kill(server->recent_pid, SIGTERM);
 
         /// Create a new process
         pid = fork();
@@ -162,7 +164,7 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
             continue;
         }
         // child process
-        if (pid == 0) {
+        else if (pid == 0) {
             close(server->listen_fd);
             // receive flag to check which service server must provide
             int flag = ERROR;
@@ -172,7 +174,6 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
                 else    break;
             }
             close(server->conn_fd);
-            kill(server->recent_pid, SIGTERM);
         }
         // parent process
         else {
