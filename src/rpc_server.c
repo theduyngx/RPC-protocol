@@ -48,22 +48,33 @@ function_t* rpc_serve_find(struct rpc_server* server) {
 
     // check if the function of requested name exists
     // do note that id will be -1 if no handler is found
+    int flag = -1;
     function_t* handler = search(server->functions, name_buffer);
-    uint64_t id;
-    if (handler == NULL) {
+    if (handler == NULL)
         fprintf(stderr, "server: rpc_serve_all - "
                         "cannot find requested function's name\n");
-        id = -1;
-    }
-    else id = handler->id;
+    else
+        flag = 0;
 
-    // finally, we send the function's id to the client
-    err = rpc_send_uint(server->conn_fd, id);
+    // send flag to client, -1 means failure
+    err = rpc_send_int(server->conn_fd, flag);
     if (err) {
         fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send function's id to client\n");
+                        "cannot send function's flag to client\n");
         return NULL;
     }
+
+    // on success
+    if (flag == 0) {
+        // finally, we send the function's id to the client
+        err = rpc_send_uint(server->conn_fd, handler->id);
+        if (err) {
+            fprintf(stderr, "server: rpc_serve_all - "
+                            "cannot send function's id to client\n");
+            return NULL;
+        }
+    }
+
     return handler;
 }
 
@@ -85,7 +96,16 @@ int rpc_serve_call(struct rpc_server* server, function_t* function) {
                         "cannot receive function's id verification from client\n");
         return -1;
     }
-    if (id != function->id) {
+
+    // send verification flag to client
+    int flag = -(id != function->id);
+    err = rpc_send_int(server->conn_fd, flag);
+    if (err) {
+        fprintf(stderr, "server: rpc_serve_all - "
+                        "cannot send verification flag to client\n");
+        return -1;
+    }
+    if (flag < 0) {
         fprintf(stderr, "server: rpc_serve_all - "
                         "verification failed; handle and handler have different ids\n");
         printf("%lu %lu\n", id, function->id);

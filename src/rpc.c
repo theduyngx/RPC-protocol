@@ -259,25 +259,34 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
         return NULL;
     }
 
+    // Read the function's flag from server ...
+    int flag = -1;
+    err = rpc_receive_int(client->sock_fd, &flag);
+    if (err) {
+        fprintf(stderr, "client: rpc_find - "
+                        "cannot receive function's flag from server\n");
+        return NULL;
+    }
+
+    // check if the function exists or not
+    if (flag == -1) {
+        fprintf(stderr, "client: rpc_find - "
+                        "no function with name %s exists on server\n", name);
+        return NULL;
+    }
+
     // Read the function's id from server
-    int id = -1;
-    err = rpc_receive_int(client->sock_fd, &id);
+    uint64_t id;
+    err = rpc_receive_uint(client->sock_fd, &id);
     if (err) {
         fprintf(stderr, "client: rpc_find - "
                         "cannot receive function's id from server\n");
         return NULL;
     }
 
-    // check if the function exists or not
-    if (id == -1) {
-        fprintf(stderr, "client: rpc_find - "
-                        "no function with name %s exists on server\n", name);
-        return NULL;
-    }
-
     ///
     printf("\n");
-    printf("client: received function id = %d\n", id);
+    printf("client: received function id = %lu\n", id);
     printf("\n");
     ///
 
@@ -303,6 +312,22 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     if (err) {
         fprintf(stderr, "rpc-client: rpc_call - "
                         "cannot send handle to server for verification\n");
+        rpc_data_free(payload);
+        return NULL;
+    }
+
+    // receive the verification flag, if negative the failure
+    int flag = -1;
+    err = rpc_receive_int(client->sock_fd, &flag);
+    if (err) {
+        fprintf(stderr, "rpc-client: rpc_call - "
+                        "cannot receive verification flag from server\n");
+        rpc_data_free(payload);
+        return NULL;
+    }
+    if (flag < 0) {
+        fprintf(stderr, "rpc-client: rpc_call - "
+                        "id verification failed\n");
         rpc_data_free(payload);
         return NULL;
     }

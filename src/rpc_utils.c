@@ -29,7 +29,19 @@ uint64_t hash(unsigned char* str) {
 
 
 /**
- * Receive an unsigned integer over the RPC network.
+ * Send an unsigned integer 64-bit over the RPC network.
+ * @param socket the RPC socket
+ * @param ret    the sent value
+ * @return       0 if successful, and otherwise if not
+ */
+int rpc_send_uint(int socket, uint64_t val) {
+    uint64_t val_ntw = htonl(val);
+    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
+    return (n < 0);
+}
+
+/**
+ * Receive an unsigned integer 64-bit over the RPC network.
  * @param socket the RPC socket
  * @param ret    the returned value
  * @return       0 if successful, and otherwise if not
@@ -40,6 +52,19 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
     if (n < 0) return 1;
     *ret = ntohl(ret_ntw);
     return 0;
+}
+
+
+/**
+ * Send a signed integer over the RPC network.
+ * @param socket the RPC socket
+ * @param ret    the sent value
+ * @return       0 if successful, and otherwise if not
+ */
+int rpc_send_int(int socket, int val) {
+    uint64_t val_ntw = htonl(val);
+    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
+    return (n < 0);
 }
 
 /**
@@ -63,30 +88,6 @@ int rpc_receive_int(int socket, int* ret) {
         *ret = -(int) (-ret64);
     else *ret = (int) ret64;
     return 0;
-}
-
-/**
- * Send an unsigned integer over the RPC network.
- * @param socket the RPC socket
- * @param ret    the sent value
- * @return       0 if successful, and otherwise if not
- */
-int rpc_send_uint(int socket, uint64_t val) {
-    uint64_t val_ntw = htonl(val);
-    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
-    return (n < 0);
-}
-
-/**
- * Send a signed integer over the RPC network.
- * @param socket the RPC socket
- * @param ret    the sent value
- * @return       0 if successful, and otherwise if not
- */
-int rpc_send_int(int socket, int val) {
-    uint64_t val_ntw = htonl(val);
-    ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
-    return (n < 0);
 }
 
 
