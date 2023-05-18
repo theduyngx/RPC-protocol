@@ -87,7 +87,7 @@ rpc_server *rpc_init_server(int port) {
 
     // bind to the appropriate address and listen
     err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
-    if (err == ERROR) {
+    if (err < 0) {
         print_error(TITLE, "listen socket cannot be bound");
         return NULL;
     }
@@ -341,15 +341,6 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
 
     // receive payload from server
     rpc_data* response = rpc_receive_payload(client->sock_fd);
-
-    ///
-//    printf("\n");
-//    printf("data1 = %d\n", response->data1);
-//    printf("data2_len = %lu\n", response->data2_len);
-//    printf("data2 = %p\n", response->data2);
-//    printf("\n");
-    ///
-
     return response;
 }
 

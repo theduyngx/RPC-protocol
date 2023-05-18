@@ -152,12 +152,6 @@ int rpc_send_payload(int socket, rpc_data* payload) {
         return ERROR;
     }
 
-    ///
-//    printf("\n");
-//    printf("data2_len = %lu\n", data2_len);
-//    printf("\n");
-    ///
-
     // send data1
     err = rpc_send_int(socket, data1);
     if (err) {

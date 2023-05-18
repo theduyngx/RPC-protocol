@@ -116,15 +116,6 @@ int rpc_serve_call(struct rpc_server* server) {
 
     // send the response to client
     err = rpc_send_payload(server->conn_fd, response);
-
-    ///
-//    printf("\n");
-//    printf("data1 = %d\n", response->data1);
-//    printf("data2_len = %lu\n", response->data2_len);
-//    printf("data2 = %p\n", response->data2);
-//    printf("\n");
-    ///
-
     if (err)
         print_error(TITLE, "cannot send the response data to client");
     return err;
