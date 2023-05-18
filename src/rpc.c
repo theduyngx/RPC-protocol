@@ -17,6 +17,9 @@
 #include "rpc_utils.h"
 
 
+/* ------------------------------------- SERVER STUB ------------------------------------- */
+
+
 /**
  * Initialize the server RPC. If NULL is returned, that means the initialization was not
  * successful.
@@ -164,6 +167,9 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         }
     }
 }
+
+
+/* ------------------------------------- CLIENT STUB ------------------------------------- */
 
 
 /* RPC client structure */

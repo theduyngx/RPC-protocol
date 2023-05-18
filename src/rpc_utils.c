@@ -13,6 +13,17 @@
 
 #include "rpc_utils.h"
 
+/*
+ * Unsigned integer 64-bit network and system conversion functions. This is used to
+ * support the 64-bit integers.
+ */
+#define htonll(x) ((1==htonl(1)) \
+        ? (x)                    \
+        : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#define ntohll(x) ((1==ntohl(1)) \
+        ? (x)                    \
+        : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+
 
 /**
  * DJB2 hash to hash strings.
@@ -35,7 +46,7 @@ uint64_t hash(unsigned char* str) {
  * @return       0 if successful, and otherwise if not
  */
 int rpc_send_uint(int socket, uint64_t val) {
-    uint64_t val_ntw = htonl(val);
+    uint64_t val_ntw = htonll(val);
     ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
     return (n < 0);
 }
@@ -50,7 +61,7 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
     uint64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
     if (n < 0) return 1;
-    *ret = ntohl(ret_ntw);
+    *ret = ntohll(ret_ntw);
     return 0;
 }
 
