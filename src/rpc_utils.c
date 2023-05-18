@@ -85,7 +85,7 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
  * @return       0 if successful, and otherwise if not
  */
 int rpc_send_int(int socket, int val) {
-    int64_t val_ntw = htonl((int64_t) val);
+    uint64_t val_ntw = htonll((uint64_t) val);
     ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
     return (n < 0);
 }
@@ -97,10 +97,10 @@ int rpc_send_int(int socket, int val) {
  * @return       0 if successful, and otherwise if not
  */
 int rpc_receive_int(int socket, int* ret) {
-    int64_t ret_ntw;
+    uint64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
     if (n < 0) return 1;
-    int64_t ret64 = ntohl(ret_ntw);
+    uint64_t ret64 = ntohll(ret_ntw);
 
     // negative integer conversion
     if (ret64 >= INT_MAX)
