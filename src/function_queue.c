@@ -25,10 +25,8 @@
  */
 function_t* function_init(char* f_name, rpc_handler f_handler) {
     uint64_t name_len = strlen(f_name);
-    if (name_len < MIN_NAME_LEN) {
-        fprintf(stderr, "function_init - name length = %lu, "
-                        "below minimal threshold %d\n",
-                name_len, MIN_NAME_LEN);
+    if (name_len == 0) {
+        fprintf(stderr, "function_init - name length = 0\n");
         return NULL;
     }
     for (int i=0; i < strlen(f_name); i++) {

@@ -130,9 +130,12 @@ int rpc_send_payload(int socket, rpc_data* payload) {
                         "cannot receive other end's UINT_MAX\n");
         return -1;
     }
+    assert(other_max > 0);
 
     // we take the UINT_MAX that is smaller, and take that as a pivot, send to other side
-    uint64_t pivot = other_max ? (other_max < UINT_MAX) : UINT_MAX;
+    uint64_t pivot;
+    if (other_max < UINT_MAX) pivot = other_max;
+    else pivot = UINT_MAX;
     err = rpc_send_uint(socket, pivot);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_send_payload - "
@@ -225,6 +228,12 @@ rpc_data* rpc_receive_payload(int socket) {
                         "cannot receive other end's UINT_MAX\n");
         return NULL;
     }
+    ///
+    printf("\n");
+    printf("PIVOT = %lu\n", pivot);
+    printf("\n");
+    assert(pivot > 0);
+    ///
 
     // receive number of times taken to send data2_len
     int num_send;

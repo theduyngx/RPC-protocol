@@ -11,8 +11,6 @@
 #include <stdint.h>
 #include "rpc.h"
 
-#define MIN_NAME_LEN 3
-
 
 /* function */
 struct function {
