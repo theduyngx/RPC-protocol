@@ -6,3 +6,10 @@ rpc
 /.idea
 CMakeLists.txt
 cmake-build-debug/
+
+# debugging
+client
+server
+cases
+client-server/
+out/
