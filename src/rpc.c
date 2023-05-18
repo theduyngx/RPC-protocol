@@ -38,11 +38,11 @@ rpc_server *rpc_init_server(int port) {
     int listen_fd = 0;
     struct addrinfo hints, *results;
 
-//    // timeout
-//    struct timeval timeout = {
-//        .tv_sec  = 10,
-//        .tv_usec = 0
-//    };
+    // timeout
+    struct timeval timeout = {
+        .tv_sec  = 10,
+        .tv_usec = 0
+    };
 
     // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
     memset(&hints, 0, sizeof hints);
@@ -78,10 +78,10 @@ rpc_server *rpc_init_server(int port) {
     int re = 1;
     err  = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
                       &re, sizeof re);
-//    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
-//                      &timeout, sizeof timeout);
-//    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
-//                      &timeout, sizeof timeout);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
+                      &timeout, sizeof timeout);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
+                      &timeout, sizeof timeout);
     if (err < 0) {
         print_error(TITLE, "setsockopt unsuccessful");
         return NULL;
