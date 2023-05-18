@@ -12,6 +12,7 @@
 #include <netdb.h>
 
 #include "rpc_utils.h"
+#define  DEBUG   0
 
 /*
  * Unsigned integer 64-bit network and system conversion functions. This is used to
@@ -36,6 +37,17 @@ uint64_t hash(unsigned char* str) {
     while ((c = *str++))
         hash_val = ((hash_val << 5) + hash_val) + c;
     return hash_val;
+}
+
+/**
+ * Debug print error messages.
+ * @param title   the function's name and domain
+ * @param message the error message
+ */
+void print_error(__attribute__((unused)) char* title,
+                 __attribute__((unused)) char* message) {
+    if (DEBUG)
+        fprintf(stderr, title, " - ", message, "\n");
 }
 
 
@@ -106,23 +118,23 @@ int rpc_receive_int(int socket, int* ret) {
  */
 int rpc_send_payload(int socket, rpc_data* payload) {
     // get the relevant properties from payload
+    char* TITLE = "rpc-helper: rpc_send_payload";
     int data1 = payload->data1;
     size_t data2_len = payload->data2_len;
 
     ///
-    printf("\n");
-    printf("data2_len = %lu\n", data2_len);
-    printf("p->data2_len = %lu\n", payload->data2_len);
-    printf("data2 = %p\n", payload->data2);
-    printf("\n");
+//    printf("\n");
+//    printf("data2_len = %lu\n", data2_len);
+//    printf("p->data2_len = %lu\n", payload->data2_len);
+//    printf("data2 = %p\n", payload->data2);
+//    printf("\n");
     ///
 
     // send data1
     int err;
     err = rpc_send_int(socket, data1);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "cannot send payload's data1 to other end\n");
+        print_error(TITLE, "cannot send payload's data1 to other end");
         return -1;
     }
 
@@ -130,8 +142,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     uint64_t other_max;
     err = rpc_receive_uint(socket, &other_max);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "cannot receive other end's UINT_MAX\n");
+        print_error(TITLE, "cannot receive other end's UINT_MAX");
         return -1;
     }
     assert(other_max > 0);
@@ -142,17 +153,16 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     else pivot = UINT_MAX;
 
     ///
-    printf("\n");
-    printf("PIVOT = %lu\n", pivot);
-    printf("data2_len = %lu\n", data2_len);
-    printf("\n");
-    assert(pivot > 0);
+//    printf("\n");
+//    printf("PIVOT = %lu\n", pivot);
+//    printf("data2_len = %lu\n", data2_len);
+//    printf("\n");
+//    assert(pivot > 0);
     ///
 
     err = rpc_send_uint(socket, pivot);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "cannot send this end's UINT_MAX to other end\n");
+        print_error(TITLE, "cannot send this end's UINT_MAX to other end");
         return -1;
     }
 
@@ -161,10 +171,10 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     int num_exceed = 0;
 
     ///
-    printf("\n");
-    printf("data_curr (before) = %lu\n", data_curr);
-    printf("data2_len = %lu\n", data2_len);
-    printf("\n");
+//    printf("\n");
+//    printf("data_curr (before) = %lu\n", data_curr);
+//    printf("data2_len = %lu\n", data2_len);
+//    printf("\n");
     ///
 
     while (data_curr > pivot) {
@@ -173,26 +183,25 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     ///
-    printf("\n");
-    printf("data_curr (after) = %lu\n", data_curr);
-    printf("num_exceed (after) = %d\n", num_exceed);
-    printf("\n");
+//    printf("\n");
+//    printf("data_curr (after) = %lu\n", data_curr);
+//    printf("num_exceed (after) = %d\n", num_exceed);
+//    printf("\n");
     ///
 
 
     // first, we send the number of times to send data2_len
     err = rpc_send_int(socket, num_exceed);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "cannot send to other end the number of times required to send data2_len\n");
+        print_error(TITLE,
+                    "cannot send to other end the number of times required to send data2_len");
         return -1;
     }
 
     // then, the remainder
     err = rpc_send_uint(socket, data_curr);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "cannot send data2_len remainder to other end\n");
+        print_error(TITLE, "cannot send data2_len remainder to other end");
         return -1;
     }
 
@@ -200,13 +209,11 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     int flag;
     err = rpc_receive_int(socket, &flag);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "cannot receive other end's file limit flag\n");
+        print_error(TITLE, "cannot receive other end's file limit flag");
         return -1;
     }
     if (flag == -1) {
-        fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                        "failed verification flag, payload exceeded its limit size\n");
+        print_error(TITLE, "failed verification flag, payload exceeded its limit size");
         return -1;
     }
 
@@ -219,8 +226,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
         buffer[data2_len] = '\0';
         ssize_t n = send(socket, buffer, data2_len, 0);
         if (n < 0) {
-            fprintf(stderr, "rpc-helper: rpc_send_payload - "
-                            "cannot send data2 to other end\n");
+            print_error(TITLE, "cannot send data2 to other end");
             return -1;
         }
     }
@@ -234,21 +240,21 @@ int rpc_send_payload(int socket, rpc_data* payload) {
  * @return       the response payload on success, and NULL on failure
  */
 rpc_data* rpc_receive_payload(int socket) {
+    char* TITLE = "rpc-helper: rpc_receive_payload";
+
     // receive data1
     int err;
     int data1;
     err = rpc_receive_int(socket, &data1);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot receive payload's data1 from other end\n");
+        print_error(TITLE, "cannot receive payload's data1 from other end");
         return NULL;
     }
 
     // send our UINT_MAX
     err = rpc_send_uint(socket, UINT_MAX);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot send this end's UINT_MAX\n");
+        print_error(TITLE, "cannot send this end's UINT_MAX");
         return NULL;
     }
 
@@ -256,24 +262,23 @@ rpc_data* rpc_receive_payload(int socket) {
     uint64_t pivot;
     err = rpc_receive_uint(socket, &pivot);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot receive other end's UINT_MAX\n");
+        print_error(TITLE, "cannot receive other end's UINT_MAX");
         return NULL;
     }
+
     ///
-    printf("\n");
-    printf("PIVOT = %lu\n", pivot);
-    printf("\n");
-    assert(pivot > 0);
+//    printf("\n");
+//    printf("PIVOT = %lu\n", pivot);
+//    printf("\n");
+//    assert(pivot > 0);
     ///
 
     // receive number of times taken to send data2_len
     int num_send;
     err = rpc_receive_int(socket, &num_send);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot receive from other end the number of times required "
-                        "to send data2_len\n");
+        print_error(TITLE, "cannot receive from other end the number of times "
+                           "required to send data2_len");
         return NULL;
     }
 
@@ -281,8 +286,7 @@ rpc_data* rpc_receive_payload(int socket) {
     uint64_t remainder;
     err = rpc_receive_uint(socket, &remainder);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot receive data2_len remainder from other end\n");
+        print_error(TITLE, "cannot receive data2_len remainder from other end");
         return NULL;
     }
 
@@ -299,8 +303,7 @@ rpc_data* rpc_receive_payload(int socket) {
 
     err = rpc_send_int(socket, flag);
     if (err) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot send limit flag to other end\n");
+        print_error(TITLE, "cannot send limit flag to other end");
         return NULL;
     }
     if (flag == -1)
@@ -317,8 +320,7 @@ rpc_data* rpc_receive_payload(int socket) {
         char buffer[data2_len + 1];
         ssize_t n = recv(socket, buffer, data2_len, 0);
         if (n < 0) {
-            fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                            "cannot receive data2 from other end\n");
+            print_error(TITLE, "cannot receive data2 from other end");
             return NULL;
         }
         buffer[data2_len] = '\0';

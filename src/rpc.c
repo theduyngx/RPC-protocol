@@ -27,6 +27,8 @@
  * @return     NULL if unsuccessful, or the server RPC if otherwise
  */
 rpc_server *rpc_init_server(int port) {
+    char* TITLE = "rpc-server: rpc_init_server";
+
     // sockets
     int listen_fd = 0;
     struct addrinfo hints, *results;
@@ -48,8 +50,7 @@ rpc_server *rpc_init_server(int port) {
     sprintf(port_str, "%d", port);
     int err = getaddrinfo(NULL, port_str, &hints, &results);
     if (err != 0) {
-        fprintf(stderr, "rpc-server: rpc_init_server - "
-                        "getaddrinfo unsuccessful\n");
+        print_error(TITLE, "getaddrinfo unsuccessful");
         return NULL;
     }
 
@@ -64,8 +65,7 @@ rpc_server *rpc_init_server(int port) {
             break;
     }
     if (listen_fd < 0) {
-        fprintf(stderr, "rpc-server: rpc_init_server - "
-                        "listen socket cannot be found\n");
+        print_error(TITLE, "listen socket cannot be found");
         return NULL;
     }
 
@@ -73,16 +73,14 @@ rpc_server *rpc_init_server(int port) {
     err = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
                      &timeout, sizeof timeout);
     if (err < 0) {
-        fprintf(stderr, "rpc-server: rpc_init_server - "
-                        "setsockopt unsuccessful\n");
+        print_error(TITLE, "setsockopt unsuccessful");
         return NULL;
     }
 
     // bind to the appropriate address and listen
     err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
     if (err == -1) {
-        fprintf(stderr, "rpc-server: rpc_init_server - "
-                        "listen socket cannot be bound\n");
+        print_error(TITLE, "listen socket cannot be bound");
         return NULL;
     }
     freeaddrinfo(results);
@@ -107,18 +105,18 @@ rpc_server *rpc_init_server(int port) {
  * @return        0 if successful, and -1 if otherwise
  */
 int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
+    char* TITLE = "rpc-server: rpc_register";
+
     // checking if server can register the function or not
     if (server == NULL) {
-        fprintf(stderr, "rpc-server: rpc_register - "
-                        "server is NULL or its listener is NULL\n");
+        print_error(TITLE, "server is NULL or its listener is NULL");
         return -1;
     }
 
     // initialize function for registration
     function_t* f = function_init(name, handler);
     if (f == NULL) {
-        fprintf(stderr, "rpc-server: rpc_register - "
-                        "function_init returns NULL\n");
+        print_error(TITLE, "function_init returns NULL");
         return -1;
     }
     return enqueue(server->functions, f);
@@ -131,6 +129,8 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
  * @param server the server RPC
  */
 _Noreturn void rpc_serve_all(rpc_server *server) {
+    char* TITLE = "rpc-server: rpc_serve_all";
+
     while (1) {
         // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
@@ -138,8 +138,7 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         int conn_fd = accept(server->listen_fd,
                              (struct sockaddr *) &client_addr, &client_addr_size);
         if (conn_fd < 0) {
-            fprintf(stderr, "rpc-server: rpc_serve_all - "
-                            "connect socket cannot accept connections\n");
+            print_error(TITLE, "connect socket cannot accept connections");
             continue;
         }
         server->conn_fd = conn_fd;
@@ -191,6 +190,7 @@ struct rpc_handle {
  * @return     client RPC if successful, or NULL if otherwise
  */
 rpc_client* rpc_init_client(char *addr, int port) {
+    char* TITLE = "rpc-client: rpc_init_server";
     int sock_fd = 0, err;
     struct addrinfo hints, *results;
 
@@ -204,8 +204,7 @@ rpc_client* rpc_init_client(char *addr, int port) {
     sprintf(port_str, "%d", port);
     err = getaddrinfo(addr, port_str, &hints, &results);
     if (err != 0) {
-        fprintf(stderr, "rpc-client: rpc_init_server - "
-                        "getaddrinfo unsuccessful\n");
+        print_error(TITLE, "getaddrinfo unsuccessful");
         return NULL;
     }
 
@@ -224,8 +223,7 @@ rpc_client* rpc_init_client(char *addr, int port) {
     }
     // no result address found
     if (result == NULL) {
-        fprintf(stderr, "rpc-client: rpc_init_client - "
-                        "failed to connect\n");
+        print_error(TITLE, "failed to connect");
         return NULL;
     }
     freeaddrinfo(results);
@@ -246,22 +244,21 @@ rpc_client* rpc_init_client(char *addr, int port) {
  * @return       the requirements to make the call (or the RPC handle), or NULL on error
  */
 rpc_handle* rpc_find(rpc_client *client, char *name) {
+    char* TITLE = "client: rpc_find";
     int err;
 
     // Send the name's length to server
     uint64_t name_len = strlen(name);
     err = rpc_send_uint(client->sock_fd, name_len);
     if (err) {
-        fprintf(stderr, "client: rpc_find - "
-                        "cannot send function's name to server\n");
+        print_error(TITLE, "cannot send length of function's name to server");
         return NULL;
     }
 
     // Send function name to server
     ssize_t n = send(client->sock_fd, name, name_len, 0);
     if (n < 0) {
-        fprintf(stderr, "client: rpc_find - "
-                        "cannot send function's name to server\n");
+        print_error(TITLE, "cannot send function's name to server");
         return NULL;
     }
 
@@ -269,15 +266,13 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     int flag = -1;
     err = rpc_receive_int(client->sock_fd, &flag);
     if (err) {
-        fprintf(stderr, "client: rpc_find - "
-                        "cannot receive function's flag from server\n");
+        print_error(TITLE, "cannot receive function's flag from server");
         return NULL;
     }
 
     // check if the function exists or not
     if (flag == -1) {
-        fprintf(stderr, "client: rpc_find - "
-                        "no function with name %s exists on server\n", name);
+        print_error(TITLE, "no function with name %s exists on server");
         return NULL;
     }
 
@@ -285,15 +280,14 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     uint64_t id;
     err = rpc_receive_uint(client->sock_fd, &id);
     if (err) {
-        fprintf(stderr, "client: rpc_find - "
-                        "cannot receive function's id from server\n");
+        print_error(TITLE, "cannot receive function's id from server");
         return NULL;
     }
 
     ///
-    printf("\n");
-    printf("client: received function id = %lu\n", id);
-    printf("\n");
+//    printf("\n");
+//    printf("client: received function id = %lu\n", id);
+//    printf("\n");
     ///
 
     // get the function handle
@@ -312,12 +306,13 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
  * @return        the response data if successful, or NULL if otherwise
  */
 rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
+    char* TITLE = "rpc-client: rpc_call";
+
     // send function's id for verification
     int err;
     err = rpc_send_uint(client->sock_fd, handle->function_id);
     if (err) {
-        fprintf(stderr, "rpc-client: rpc_call - "
-                        "cannot send handle to server for verification\n");
+        print_error(TITLE, "cannot send handle to server for verification");
         return NULL;
     }
 
@@ -325,21 +320,18 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     int flag = -1;
     err = rpc_receive_int(client->sock_fd, &flag);
     if (err) {
-        fprintf(stderr, "rpc-client: rpc_call - "
-                        "cannot receive verification flag from server\n");
+        print_error(TITLE, "cannot receive verification flag from server");
         return NULL;
     }
     if (flag < 0) {
-        fprintf(stderr, "rpc-client: rpc_call - "
-                        "id verification failed\n");
+        print_error(TITLE, "id verification failed");
         return NULL;
     }
 
     // send payload to server
     err = rpc_send_payload(client->sock_fd, payload);
     if (err) {
-        fprintf(stderr, "rpc-client: rpc_call - "
-                       "cannot send payload to server\n");
+        print_error(TITLE, "cannot send payload to server");
         return NULL;
     }
 
@@ -347,14 +339,14 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     rpc_data* response = rpc_receive_payload(client->sock_fd);
 
     ///
-    if (response == NULL) {
-        printf("\n");
-        printf("RESPONSE NULL!!!\n");
-        printf("\n");
-    }
-    printf("\n");
-    printf("RESPONSE: data1 = %d ; data2_len = %lu\n", response->data1, response->data2_len);
-    printf("\n");
+//    if (response == NULL) {
+//        printf("\n");
+//        printf("RESPONSE NULL!!!\n");
+//        printf("\n");
+//    }
+//    printf("\n");
+//    printf("RESPONSE: data1 = %d ; data2_len = %lu\n", response->data1, response->data2_len);
+//    printf("\n");
     ///
 
     return response;

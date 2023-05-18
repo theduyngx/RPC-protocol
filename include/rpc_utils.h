@@ -11,8 +11,10 @@
 #include <stdint.h>
 #include "rpc.h"
 
+
 /* hash */
 uint64_t hash(unsigned char* str);
+void print_error(char* title, char* message);
 
 /* send/receive unsigned integer 64-bit */
 int rpc_send_uint(int socket, uint64_t val);

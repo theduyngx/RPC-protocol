@@ -8,7 +8,6 @@
  * whenever adding another function to the queue.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -24,18 +23,18 @@
  * @return          the function
  */
 function_t* function_init(char* f_name, rpc_handler f_handler) {
+    char* TITLE = "function_init";
+
     uint64_t name_len = strlen(f_name);
     if (name_len == 0) {
-        fprintf(stderr, "function_init - name length = 0\n");
+        print_error(TITLE, "name length = 0");
         return NULL;
     }
     for (int i=0; i < strlen(f_name); i++) {
         char character = f_name[i];
         int ascii = (int) character;
         if (ascii < 32 || ascii > 126) {
-            fprintf(stderr, "function_init - ascii character %c (ascii %d) "
-                            "is not within range 32 and 126\n",
-                    character, ascii);
+            print_error(TITLE, "ascii character not within range 32 and 126");
             return NULL;
         }
     }
@@ -89,9 +88,10 @@ int enqueue(queue_f* q, function_t* f) {
     for (int i=0; i < q->size; i++) {
         function_t* f_curr = curr->function;
         if (f_curr->id == f->id) {
-            // just for debugging
-            assert(strcmp(f_curr->f_name, f->f_name) == 0);
-            printf("server: function_queue: function %s already exists", f->f_name);
+            /// just for debugging
+//            assert(strcmp(f_curr->f_name, f->f_name) == 0);
+//            printf("server: function_queue: function %s already exists", f->f_name);
+            ///
             return 1;
         }
         assert(strcmp(f_curr->f_name, f->f_name) != 0);
@@ -103,10 +103,10 @@ int enqueue(queue_f* q, function_t* f) {
     (q->size)++;
 
     ///
-    printf("\n");
-    printf("ENQUEUE: name %s\n", f->f_name);
-    printf("ENQUEUE: id %lu\n", f->id);
-    printf("\n");
+//    printf("\n");
+//    printf("ENQUEUE: name %s\n", f->f_name);
+//    printf("ENQUEUE: id %lu\n", f->id);
+//    printf("\n");
     ///
 
     return 0;
@@ -143,10 +143,10 @@ function_t* search(queue_f* functions, char* name) {
 
     /////
     uint64_t hashed = hash((unsigned char*) name);
-    printf("\n");
-    printf("SEARCH: function name is %s\n", name);
-    printf("SEARCH: function hashed is %lu\n", hashed);
-    printf("\n");
+//    printf("\n");
+//    printf("SEARCH: function name is %s\n", name);
+//    printf("SEARCH: function hashed is %lu\n", hashed);
+//    printf("\n");
     /////
 
     // check if the function of requested id exists

@@ -20,26 +20,27 @@
  *               or the function structure to serve the call later
  */
 function_t* rpc_serve_find(struct rpc_server* server) {
+    char* TITLE = "rpc-server: rpc_serve_all";
 
     // receive the name's length from client
     int err;
     uint64_t name_len;
     err = rpc_receive_uint(server->conn_fd, &name_len);
     if (err) {
-        fprintf(stderr, "rpc-server: rpc_serve_all - "
-                        "cannot receive the length of client's requested function's name\n");
+        print_error(TITLE, "cannot receive the length of client's "
+                           "requested function's name");
         return NULL;
     }
-    /// DEBUG
-    printf("server's received name length = %lu\n", name_len);
+
+    ///
+//    printf("server's received name length = %lu\n", name_len);
     ///
 
     // receive the function's name from client
     char name_buffer[name_len+1];
     ssize_t n = recv(server->conn_fd, name_buffer, name_len, 0);
     if (n < 0) {
-        fprintf(stderr, "rpc-server: rpc_serve_all - "
-                        "cannot receive client's requested function name\n");
+        print_error(TITLE, "cannot receive client's requested function name");
         return NULL;
     }
     // Null-terminate string
@@ -50,16 +51,14 @@ function_t* rpc_serve_find(struct rpc_server* server) {
     int flag = -1;
     function_t* handler = search(server->functions, name_buffer);
     if (handler == NULL)
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot find requested function's name\n");
+        print_error(TITLE, "cannot find requested function's name");
     else
         flag = 0;
 
     // send flag to client, -1 means failure
     err = rpc_send_int(server->conn_fd, flag);
     if (err) {
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send function's flag to client\n");
+        print_error(TITLE, "cannot send function's flag to client");
         return NULL;
     }
 
@@ -67,15 +66,14 @@ function_t* rpc_serve_find(struct rpc_server* server) {
     if (flag == 0) {
         // finally, we send the function's id to the client
         ///
-        printf("\n");
-        printf("RPC-SERVER: THE FOUND ID IS %lu\n", handler->id);
-        printf("\n");
+//        printf("\n");
+//        printf("RPC-SERVER: THE FOUND ID IS %lu\n", handler->id);
+//        printf("\n");
         ///
 
         err = rpc_send_uint(server->conn_fd, handler->id);
         if (err) {
-            fprintf(stderr, "server: rpc_serve_all - "
-                            "cannot send function's id to client\n");
+            print_error(TITLE, "cannot send function's id to client");
             return NULL;
         }
     }
@@ -92,13 +90,14 @@ function_t* rpc_serve_find(struct rpc_server* server) {
  * @return         0 if successful, and otherwise if not
  */
 int rpc_serve_call(struct rpc_server* server, function_t* function) {
+    char* TITLE = "server: rpc_serve_all";
+
     // read the function's id to verify the id
     int err;
     uint64_t id;
     err = rpc_receive_uint(server->conn_fd, &id);
     if (err) {
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot receive function's id verification from client\n");
+        print_error(TITLE, "cannot receive function's id verification from client");
         return -1;
     }
 
@@ -106,14 +105,12 @@ int rpc_serve_call(struct rpc_server* server, function_t* function) {
     int flag = -(id != function->id);
     err = rpc_send_int(server->conn_fd, flag);
     if (err) {
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send verification flag to client\n");
+        print_error(TITLE, "cannot send verification flag to client");
         return -1;
     }
     if (flag < 0) {
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "verification failed; handle and handler have different ids\n");
-        printf("%lu %lu\n", id, function->id);
+        print_error(TITLE,
+                    "verification failed; handle and handler have different ids");
         return -1;
     }
 
@@ -129,7 +126,6 @@ int rpc_serve_call(struct rpc_server* server, function_t* function) {
     // send the response to client
     err = rpc_send_payload(server->conn_fd, response);
     if (err)
-        fprintf(stderr, "server: rpc_serve_all - "
-                        "cannot send the response data to client\n");
+        print_error(TITLE, "cannot send the response data to client");
     return err;
 }
