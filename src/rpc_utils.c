@@ -87,13 +87,9 @@ int rpc_send_int(int socket, int val) {
 int rpc_receive_int(int socket, int* ret) {
     int64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
-    if (n < 0) {
-        fprintf(stderr, "RPC-helper: rpc_receive_int - "
-                        "cannot receive integer\n");
-        return 1;
-    }
-
+    if (n < 0) return 1;
     int64_t ret64 = ntohl(ret_ntw);
+
     // negative integer conversion
     if (ret64 >= INT_MAX)
         *ret = -(int) (-ret64);
@@ -112,6 +108,14 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     // get the relevant properties from payload
     int data1 = payload->data1;
     size_t data2_len = payload->data2_len;
+
+    ///
+    printf("\n");
+    printf("data2_len = %lu\n", data2_len);
+    printf("p->data2_len = %lu\n", payload->data2_len);
+    printf("data2 = %p\n", payload->data2);
+    printf("\n");
+    ///
 
     // send data1
     int err;
@@ -136,6 +140,15 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     uint64_t pivot;
     if (other_max < UINT_MAX) pivot = other_max;
     else pivot = UINT_MAX;
+
+    ///
+    printf("\n");
+    printf("PIVOT = %lu\n", pivot);
+    printf("data2_len = %lu\n", data2_len);
+    printf("\n");
+    assert(pivot > 0);
+    ///
+
     err = rpc_send_uint(socket, pivot);
     if (err) {
         fprintf(stderr, "rpc-helper: rpc_send_payload - "
@@ -146,10 +159,26 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     // for data2 - due to it being size_t, it may exceed pivot
     size_t data_curr = data2_len;
     int num_exceed = 0;
+
+    ///
+    printf("\n");
+    printf("data_curr (before) = %lu\n", data_curr);
+    printf("data2_len = %lu\n", data2_len);
+    printf("\n");
+    ///
+
     while (data_curr > pivot) {
         num_exceed++;
         data_curr -= pivot;
     }
+
+    ///
+    printf("\n");
+    printf("data_curr (after) = %lu\n", data_curr);
+    printf("num_exceed (after) = %d\n", num_exceed);
+    printf("\n");
+    ///
+
 
     // first, we send the number of times to send data2_len
     err = rpc_send_int(socket, num_exceed);
@@ -175,8 +204,11 @@ int rpc_send_payload(int socket, rpc_data* payload) {
                         "cannot receive other end's file limit flag\n");
         return -1;
     }
-    if (flag == -1)
+    if (flag == -1) {
+        fprintf(stderr, "rpc-helper: rpc_send_payload - "
+                        "failed verification flag, payload exceeded its limit size\n");
         return -1;
+    }
 
     // if data2_len is not zero, send data2
     if (data2_len > 0) {
@@ -258,7 +290,7 @@ rpc_data* rpc_receive_payload(int socket) {
     int flag = 0;
     uint64_t intervals = SIZE_MAX / pivot;
     // so, we compare num_send against number of times taken for pivot to reach SIZE_MAX
-    if (intervals > num_send)
+    if (intervals < num_send)
         flag = -1;
     else if (intervals == num_send) {
         uint64_t interval_remainder = SIZE_MAX % pivot;

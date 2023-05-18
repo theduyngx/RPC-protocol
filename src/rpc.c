@@ -345,6 +345,8 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
 
     // receive payload from server
     rpc_data* response = rpc_receive_payload(client->sock_fd);
+
+    ///
     if (response == NULL) {
         printf("\n");
         printf("RESPONSE NULL!!!\n");
@@ -353,6 +355,8 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     printf("\n");
     printf("RESPONSE: data1 = %d ; data2_len = %lu\n", response->data1, response->data2_len);
     printf("\n");
+    ///
+
     return response;
 }
 
