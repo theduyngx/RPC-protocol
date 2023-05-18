@@ -10,6 +10,7 @@
 
 #include "function_queue.h"
 
+
 /* RPC server structure */
 struct rpc_server {
     int listen_fd;
@@ -19,6 +20,6 @@ struct rpc_server {
 
 /* function prototypes to serve clients */
 function_t* rpc_serve_find(struct rpc_server* server);
-int rpc_serve_call(struct rpc_server* server, function_t* function);
+int rpc_serve_call(struct rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H

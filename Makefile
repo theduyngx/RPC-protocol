@@ -64,17 +64,51 @@ clean:
 
 
 # test cases
-opo-srv:
+1+1-srv:
 	./$(SRV) < $(CASES)1+1/$(SRV_IN)
-opo-cli:
+1+1-cli:
 	./$(CLI) < $(CASES)1+1/$(CLI_IN)
 
-hph-srv:
+127+127-srv:
 	./$(SRV) < $(CASES)127+127/$(SRV_IN)
-hph-cli:
+127+127-cli:
 	./$(CLI) < $(CASES)127+127/$(CLI_IN)
 
 abc-srv:
 	./$(SRV) < $(CASES)abc/$(SRV_IN)
 abc-cli:
 	./$(CLI) < $(CASES)abc/$(CLI_IN)
+
+block1-srv:
+	./$(SRV) < $(CASES)block1/$(SRV_IN)
+block1-cli1:
+	./$(CLI) < $(CASES)block1/client1.in
+block1-cli2:
+	./$(CLI) < $(CASES)block1/client2.in
+
+block2-srv:
+	./$(SRV) < $(CASES)block2/$(SRV_IN)
+block2-cli1:
+	./$(CLI) < $(CASES)block2/client1.in
+block2-cli2:
+	./$(CLI) < $(CASES)block2/client2.in
+
+call2-srv:
+	./$(SRV) < $(CASES)call2/$(SRV_IN)
+call2-cli:
+	./$(CLI) < $(CASES)call2/$(CLI_IN)
+
+call-twice-srv:
+	./$(SRV) < $(CASES)call-twice/$(SRV_IN)
+call-twice-cli:
+	./$(CLI) < $(CASES)call-twice/$(CLI_IN)
+
+missing-srv:
+	./$(SRV) < $(CASES)missing/$(SRV_IN)
+missing-cli:
+	./$(CLI) < $(CASES)missing/$(CLI_IN)
+
+switch1-srv:
+	./$(SRV) < $(CASES)switch1/$(SRV_IN)
+switch1-cli:
+	./$(CLI) < $(CASES)switch1/$(CLI_IN)

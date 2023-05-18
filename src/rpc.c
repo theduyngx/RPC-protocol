@@ -16,6 +16,9 @@
 #include "rpc_server.h"
 #include "rpc_utils.h"
 
+#define FIND_SERVICE (int) 0
+#define CALL_SERVICE (int) 1
+
 
 /* ------------------------------------- SERVER STUB ------------------------------------- */
 
@@ -60,9 +63,9 @@ rpc_server *rpc_init_server(int port) {
         if (result->ai_family == AF_INET6 &&
                 (listen_fd = socket(result->ai_family,
                                     result->ai_socktype,
-                                    result->ai_protocol
-                                    )) >= 0)
-            break;
+                                    result->ai_protocol)
+                ) >= 0
+            ) break;
     }
     if (listen_fd < 0) {
         print_error(TITLE, "listen socket cannot be found");
@@ -70,8 +73,13 @@ rpc_server *rpc_init_server(int port) {
     }
 
     // set options to reusable address
-    err = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
-                     &timeout, sizeof timeout);
+    int re = 1;
+    err  = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
+                      &re, sizeof re);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
+                      &timeout, sizeof timeout);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
+                      &timeout, sizeof timeout);
     if (err < 0) {
         print_error(TITLE, "setsockopt unsuccessful");
         return NULL;
@@ -79,7 +87,7 @@ rpc_server *rpc_init_server(int port) {
 
     // bind to the appropriate address and listen
     err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
-    if (err == -1) {
+    if (err == ERROR) {
         print_error(TITLE, "listen socket cannot be bound");
         return NULL;
     }
@@ -102,7 +110,7 @@ rpc_server *rpc_init_server(int port) {
  * @param server  the server RPC
  * @param name    the function's name
  * @param handler the function's handler
- * @return        0 if successful, and -1 if otherwise
+ * @return        0 if successful, and ERROR if otherwise
  */
 int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
     char* TITLE = "rpc-server: rpc_register";
@@ -110,14 +118,14 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
     // checking if server can register the function or not
     if (server == NULL) {
         print_error(TITLE, "server is NULL or its listener is NULL");
-        return -1;
+        return ERROR;
     }
 
     // initialize function for registration
     function_t* f = function_init(name, handler);
     if (f == NULL) {
         print_error(TITLE, "function_init returns NULL");
-        return -1;
+        return ERROR;
     }
     return enqueue(server->functions, f);
 }
@@ -143,21 +151,13 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         }
         server->conn_fd = conn_fd;
 
-        while (1) {
-            // serve rpc_find from client
-            function_t *function = rpc_serve_find(server);
-            if (function == NULL)
-                continue;
-
-            // serve rpc_call from client
-            rpc_serve_call(server, function);
-
-            /// NOTE: The idea here is that the client should be able to detect when client
-            /// is calling something.
-
-            /// NOTE: do not break here!!! We must more reliably check if connection has
-            /// stopped to break from client connection
-            break;
+        // receive flag to check which service server must provide
+        int flag = ERROR;
+        while (rpc_receive_int(server->conn_fd, &flag) == 0) {
+            if      (flag == ERROR)        break;
+            else if (flag == FIND_SERVICE) rpc_serve_find(server);
+            else if (flag == CALL_SERVICE) rpc_serve_call(server);
+            flag = ERROR;
         }
     }
 }
@@ -209,7 +209,7 @@ rpc_client* rpc_init_client(char *addr, int port) {
         sock_fd = socket(result->ai_family,
                          result->ai_socktype,
                          result->ai_protocol);
-        if (sock_fd == -1)
+        if (sock_fd < 0)
             continue;
         err = connect(sock_fd, result->ai_addr, result->ai_addrlen);
         if (err != -1)
@@ -242,6 +242,14 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     char* TITLE = "client: rpc_find";
     int err;
 
+    // send the flag to confirm client is calling find
+    int request = FIND_SERVICE;
+    err = rpc_send_int(client->sock_fd, request);
+    if (err) {
+        print_error(TITLE, "cannot send find service flag to server");
+        return NULL;
+    }
+
     // Send the name's length to server
     uint64_t name_len = strlen(name);
     err = rpc_send_uint(client->sock_fd, name_len);
@@ -258,7 +266,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     }
 
     // Read the function's flag from server ...
-    int flag = -1;
+    int flag = ERROR;
     err = rpc_receive_int(client->sock_fd, &flag);
     if (err) {
         print_error(TITLE, "cannot receive function's flag from server");
@@ -266,7 +274,7 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
     }
 
     // check if the function exists or not
-    if (flag == -1) {
+    if (flag == ERROR) {
         print_error(TITLE, "no function with name %s exists on server");
         return NULL;
     }
@@ -296,9 +304,17 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
  */
 rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     char* TITLE = "rpc-client: rpc_call";
+    int err;
+
+    // send the flag to confirm client is calling call
+    int request = CALL_SERVICE;
+    err = rpc_send_int(client->sock_fd, request);
+    if (err) {
+        print_error(TITLE, "cannot send call service flag to server");
+        return NULL;
+    }
 
     // send function's id for verification
-    int err;
     err = rpc_send_uint(client->sock_fd, handle->function_id);
     if (err) {
         print_error(TITLE, "cannot send handle to server for verification");
@@ -306,7 +322,7 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     }
 
     // receive the verification flag, if negative the failure
-    int flag = -1;
+    int flag = ERROR;
     err = rpc_receive_int(client->sock_fd, &flag);
     if (err) {
         print_error(TITLE, "cannot receive verification flag from server");

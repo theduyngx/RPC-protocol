@@ -12,18 +12,18 @@
 #include <netdb.h>
 
 #include "rpc_utils.h"
-#define  DEBUG   0
+#define  DEBUG  1
 
 /*
  * Unsigned integer 64-bit network and system conversion functions. This is used to
  * support the 64-bit integers.
  */
-#define htonll(x) ((1==htonl(1)) \
-        ? (x)                    \
-        : ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
-#define ntohll(x) ((1==ntohl(1)) \
-        ? (x)                    \
-        : ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
+#define htonll(x) ((1 == htonl(1)) ? \
+                  (x)              : \
+                  ((uint64_t)htonl((x) & 0xFFFFFFFF) << 32) | htonl((x) >> 32))
+#define ntohll(x) ((1 == ntohl(1)) ? \
+                  (x)              : \
+                  ((uint64_t)ntohl((x) & 0xFFFFFFFF) << 32) | ntohl((x) >> 32))
 
 
 /**
@@ -127,7 +127,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     err = rpc_send_int(socket, data1);
     if (err) {
         print_error(TITLE, "cannot send payload's data1 to other end");
-        return -1;
+        return ERROR;
     }
 
     // we receive their UINT_MAX
@@ -135,7 +135,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     err = rpc_receive_uint(socket, &other_max);
     if (err) {
         print_error(TITLE, "cannot receive other end's UINT_MAX");
-        return -1;
+        return ERROR;
     }
     assert(other_max > 0);
 
@@ -147,7 +147,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     err = rpc_send_uint(socket, pivot);
     if (err) {
         print_error(TITLE, "cannot send this end's UINT_MAX to other end");
-        return -1;
+        return ERROR;
     }
 
     // for data2 - due to it being size_t, it may exceed pivot
@@ -163,26 +163,26 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     if (err) {
         print_error(TITLE,
                     "cannot send to other end the number of times required to send data2_len");
-        return -1;
+        return ERROR;
     }
 
     // then, the remainder
     err = rpc_send_uint(socket, data_curr);
     if (err) {
         print_error(TITLE, "cannot send data2_len remainder to other end");
-        return -1;
+        return ERROR;
     }
 
-    // receive flag from server, if it is -1, then that means the size of the payload exceeds limit
+    // receive flag from server, if it is ERROR, then that means the size of the payload exceeds limit
     int flag;
     err = rpc_receive_int(socket, &flag);
     if (err) {
         print_error(TITLE, "cannot receive other end's file limit flag");
-        return -1;
+        return ERROR;
     }
-    if (flag == -1) {
+    if (flag == ERROR) {
         print_error(TITLE, "failed verification flag, payload exceeded its limit size");
-        return -1;
+        return ERROR;
     }
 
     // if data2_len is not zero, send data2
@@ -195,7 +195,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
         ssize_t n = send(socket, buffer, data2_len, 0);
         if (n < 0) {
             print_error(TITLE, "cannot send data2 to other end");
-            return -1;
+            return ERROR;
         }
     }
     return 0;
@@ -256,10 +256,10 @@ rpc_data* rpc_receive_payload(int socket) {
     uint64_t intervals = SIZE_MAX / pivot;
     // so, we compare num_send against number of times taken for pivot to reach SIZE_MAX
     if (intervals < num_send)
-        flag = -1;
+        flag = ERROR;
     else if (intervals == num_send) {
         uint64_t interval_remainder = SIZE_MAX % pivot;
-        if (interval_remainder <= remainder) flag = -1;
+        if (interval_remainder <= remainder) flag = ERROR;
     }
 
     err = rpc_send_int(socket, flag);
@@ -267,7 +267,7 @@ rpc_data* rpc_receive_payload(int socket) {
         print_error(TITLE, "cannot send limit flag to other end");
         return NULL;
     }
-    if (flag == -1)
+    if (flag == ERROR)
         return NULL;
 
     // otherwise, receive the package

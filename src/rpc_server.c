@@ -67,7 +67,6 @@ function_t* rpc_serve_find(struct rpc_server* server) {
             return NULL;
         }
     }
-
     return handler;
 }
 
@@ -76,13 +75,12 @@ function_t* rpc_serve_find(struct rpc_server* server) {
  * Server RPC function to serve the call request from client. It will first try to receive
  * from the client the appropriate RPC data packet, and call the handler accordingly.
  * @param server   the server RPC
- * @param function the RPC function
  * @return         0 if successful, and otherwise if not
  */
-int rpc_serve_call(struct rpc_server* server, function_t* function) {
+int rpc_serve_call(struct rpc_server* server) {
     char* TITLE = "server: rpc_serve_all";
 
-    // read the function's id to verify the id
+    // read the function's id to get the function for call
     int err;
     uint64_t id;
     err = rpc_receive_uint(server->conn_fd, &id);
@@ -92,7 +90,8 @@ int rpc_serve_call(struct rpc_server* server, function_t* function) {
     }
 
     // send verification flag to client
-    int flag = -(id != function->id);
+    function_t* function = search_id(server->functions, id);
+    int flag = -(function == NULL);
     err = rpc_send_int(server->conn_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send verification flag to client");

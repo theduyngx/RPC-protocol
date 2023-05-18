@@ -11,8 +11,10 @@
 #include <stdint.h>
 #include "rpc.h"
 
+#define ERROR (int) (-1)
 
-/* hash */
+
+/* hash and debug */
 uint64_t hash(unsigned char* str);
 void print_error(char* title, char* message);
 
