@@ -172,4 +172,4 @@ shortcut:
 	make clean
 	make
 	make debug
-	make endian3-srv
+	make endian2-srv

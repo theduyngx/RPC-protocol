@@ -85,7 +85,7 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
  * @return       0 if successful, and otherwise if not
  */
 int rpc_send_int(int socket, int val) {
-    uint64_t val_ntw = htonl(val);
+    int64_t val_ntw = htonl(val);
     ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
     return (n < 0);
 }

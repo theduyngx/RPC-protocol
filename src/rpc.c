@@ -38,7 +38,7 @@ rpc_server *rpc_init_server(int port) {
 
     // timeout
     struct timeval timeout = {
-        .tv_sec = 5,
+        .tv_sec  = 10,
         .tv_usec = 0
     };
 
