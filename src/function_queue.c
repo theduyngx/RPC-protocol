@@ -44,7 +44,6 @@ function_t* function_init(char* f_name, rpc_handler f_handler) {
     f->id = id;
     f->f_name = f_name;
     f->f_handler = f_handler;
-    assert(f->f_name && f->f_handler);
     return f;
 }
 
@@ -89,7 +88,6 @@ int enqueue(queue_f* q, function_t* f) {
         function_t* f_curr = curr->function;
         if (f_curr->id == f->id)
             return 1;
-        assert(strcmp(f_curr->f_name, f->f_name) != 0);
         curr = curr->next;
     }
     q->last->function = f;

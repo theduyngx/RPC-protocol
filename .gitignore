@@ -1,8 +1,11 @@
+# standard
 rpc-client
 rpc-server
 rpc
 *.a
 *.o
+
+# CLion
 /.idea
 CMakeLists.txt
 cmake-build-debug/

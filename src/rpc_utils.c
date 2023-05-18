@@ -47,7 +47,7 @@ uint64_t hash(unsigned char* str) {
 void print_error(__attribute__((unused)) char* title,
                  __attribute__((unused)) char* message) {
     if (DEBUG)
-        fprintf(stderr, title, " - ", message, "\n");
+        fprintf(stderr, "%s %s %s\n", title, "-", message);
 }
 
 
@@ -117,13 +117,28 @@ int rpc_receive_int(int socket, int* ret) {
  * @return        0 if successful, and otherwise if not
  */
 int rpc_send_payload(int socket, rpc_data* payload) {
-    // get the relevant properties from payload
     char* TITLE = "rpc-helper: rpc_send_payload";
+    int err;
+    int flag;
+
+    // send payload verification flag
+    flag = -(payload == NULL);
+    err = rpc_send_int(socket, flag);
+    if (err) {
+        print_error(TITLE, "cannot send payload verification flag to other end");
+        return ERROR;
+    }
+    if (flag != 0) {
+        print_error(TITLE, "payload is NULL");
+        return ERROR;
+    }
+
+    // get the relevant properties from payload
     int data1 = payload->data1;
     size_t data2_len = payload->data2_len;
 
+
     // send data1
-    int err;
     err = rpc_send_int(socket, data1);
     if (err) {
         print_error(TITLE, "cannot send payload's data1 to other end");
@@ -174,7 +189,6 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     // receive flag from server, if it is ERROR, then that means the size of the payload exceeds limit
-    int flag;
     err = rpc_receive_int(socket, &flag);
     if (err) {
         print_error(TITLE, "cannot receive other end's file limit flag");
@@ -185,18 +199,30 @@ int rpc_send_payload(int socket, rpc_data* payload) {
         return ERROR;
     }
 
-    // if data2_len is not zero, send data2
-    if (data2_len > 0) {
-        void* data2 = payload->data2;
-        // since void type takes up 1 byte, we do not need to do byte ordering
-        char buffer[data2_len+1];
-        memcpy(buffer, data2, data2_len);
-        buffer[data2_len] = '\0';
-        ssize_t n = send(socket, buffer, data2_len, 0);
-        if (n < 0) {
-            print_error(TITLE, "cannot send data2 to other end");
-            return ERROR;
-        }
+    // send data2 verification flag
+    void* data2 = payload->data2;
+    if ((data2_len > 0 && data2 == NULL) || (data2_len == 0 && data2 != NULL))
+        flag = -1;
+    err = rpc_send_int(socket, flag);
+    if (err) {
+        print_error(TITLE, "cannot send data2 verification flag to other end");
+        return ERROR;
+    }
+    // verify data2
+    if (flag != 0) {
+        print_error(TITLE, "data2 is NULL");
+        return ERROR;
+    }
+
+    // send data2 if flag verifies data2 is not NULL
+    // since void type takes up 1 byte, we do not need to do byte ordering
+    char buffer[data2_len+1];
+    memcpy(buffer, data2, data2_len);
+    buffer[data2_len] = '\0';
+    ssize_t n = send(socket, buffer, data2_len, 0);
+    if (n < 0) {
+        print_error(TITLE, "cannot send data2 to other end");
+        return ERROR;
     }
     return 0;
 }
@@ -209,9 +235,21 @@ int rpc_send_payload(int socket, rpc_data* payload) {
  */
 rpc_data* rpc_receive_payload(int socket) {
     char* TITLE = "rpc-helper: rpc_receive_payload";
+    int err;
+    int flag;
+
+    // receive payload verification flag
+    err = rpc_receive_int(socket, &flag);
+    if (err) {
+        print_error(TITLE, "cannot receive payload verification flag from other end");
+        return NULL;
+    }
+    if (flag != 0) {
+        print_error(TITLE, "payload is NULL");
+        return NULL;
+    }
 
     // receive data1
-    int err;
     int data1;
     err = rpc_receive_int(socket, &data1);
     if (err) {
@@ -252,7 +290,6 @@ rpc_data* rpc_receive_payload(int socket) {
     }
 
     // to really compare against SIZE_MAX, we cannot do it directly (looped to 0 if exceeded)
-    int flag = 0;
     uint64_t intervals = SIZE_MAX / pivot;
     // so, we compare num_send against number of times taken for pivot to reach SIZE_MAX
     if (intervals < num_send)
@@ -273,22 +310,31 @@ rpc_data* rpc_receive_payload(int socket) {
     // otherwise, receive the package
     size_t data2_len = pivot * num_send + remainder;
     void* data2;
-    if (data2_len == 0)
-        data2 = NULL;
+
+    // receive data2 verification flag
+    err = rpc_receive_int(socket, &flag);
+    if (err) {
+        print_error(TITLE,
+                    "cannot receive data2 verification flag from other end");
+        return NULL;
+    }
+    // verify data2
+    if (flag != 0) {
+        print_error(TITLE, "data2 is NULL");
+        return NULL;
+    }
 
     // receive data2
-    else {
-        char buffer[data2_len + 1];
-        ssize_t n = recv(socket, buffer, data2_len, 0);
-        if (n < 0) {
-            print_error(TITLE, "cannot receive data2 from other end");
-            return NULL;
-        }
-        buffer[data2_len] = '\0';
-        data2 = (void *) malloc(data2_len * sizeof(void));
-        assert(data2_len == n);
-        memcpy(data2, buffer, data2_len);
+    char buffer[data2_len + 1];
+    ssize_t n = recv(socket, buffer, data2_len, 0);
+    if (n < 0) {
+        print_error(TITLE, "cannot receive data2 from other end");
+        return NULL;
     }
+    buffer[data2_len] = '\0';
+    data2 = (void *) malloc(data2_len * sizeof(void));
+    assert(data2_len == n);
+    memcpy(data2, buffer, n);
 
     // return the payload
     rpc_data* payload = (rpc_data*) malloc(sizeof(rpc_data));

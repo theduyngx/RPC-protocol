@@ -1,2 +1,0 @@
-1. Need to let client know when server is down
-2. Need a way for server to know connection with client is finished

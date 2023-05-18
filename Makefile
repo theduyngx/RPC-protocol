@@ -108,6 +108,16 @@ abc-srv:
 abc-cli:
 	./$(CLI_DB) < $(CASES)abc/$(CLI_IN)
 
+bad.client-srv:
+	./$(SRV_DB) < $(CASES)bad.client/$(SRV_IN)
+bad.client-cli:
+	./$(CLI_DB) < $(CASES)bad.client/$(CLI_IN)
+
+bad.server-srv:
+	./$(SRV_DB) < $(CASES)bad.server/$(SRV_IN)
+bad.server-cli:
+	./$(CLI_DB) < $(CASES)bad.server/$(CLI_IN)
+
 block1-srv:
 	./$(SRV_DB) < $(CASES)block1/$(SRV_IN)
 block1-cli1:
@@ -141,3 +151,25 @@ switch1-srv:
 	./$(SRV_DB) < $(CASES)switch1/$(SRV_IN)
 switch1-cli:
 	./$(CLI_DB) < $(CASES)switch1/$(CLI_IN)
+
+endian1-srv:
+	./$(SRV_DB) < $(CASES)endian1/$(SRV_IN)
+endian1-cli:
+	./$(CLI_DB) < $(CASES)endian1/$(CLI_IN)
+
+endian2-srv:
+	./$(SRV_DB) < $(CASES)endian2/$(SRV_IN)
+endian2-cli:
+	./$(CLI_DB) < $(CASES)endian2/$(CLI_IN)
+
+endian3-srv:
+	./$(SRV_DB) < $(CASES)endian3/$(SRV_IN)
+endian3-cli:
+	./$(CLI_DB) < $(CASES)endian3/$(CLI_IN)
+
+
+shortcut:
+	make clean
+	make
+	make debug
+	make bad.server-srv
