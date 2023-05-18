@@ -32,10 +32,6 @@ function_t* rpc_serve_find(struct rpc_server* server) {
         return NULL;
     }
 
-    ///
-//    printf("server's received name length = %lu\n", name_len);
-    ///
-
     // receive the function's name from client
     char name_buffer[name_len+1];
     ssize_t n = recv(server->conn_fd, name_buffer, name_len, 0);
@@ -65,12 +61,6 @@ function_t* rpc_serve_find(struct rpc_server* server) {
     // on success
     if (flag == 0) {
         // finally, we send the function's id to the client
-        ///
-//        printf("\n");
-//        printf("RPC-SERVER: THE FOUND ID IS %lu\n", handler->id);
-//        printf("\n");
-        ///
-
         err = rpc_send_uint(server->conn_fd, handler->id);
         if (err) {
             print_error(TITLE, "cannot send function's id to client");

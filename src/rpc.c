@@ -155,11 +155,6 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
             /// NOTE: The idea here is that the client should be able to detect when client
             /// is calling something.
 
-            /// BUT: as we see in the API, these things are sequential, at least it appears so
-            /// Meaning client must call find first
-            /// Then after found, client must call 'call'
-            /// Then respond with payload and get server's response
-
             /// NOTE: do not break here!!! We must more reliably check if connection has
             /// stopped to break from client connection
             break;
@@ -284,12 +279,6 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
         return NULL;
     }
 
-    ///
-//    printf("\n");
-//    printf("client: received function id = %lu\n", id);
-//    printf("\n");
-    ///
-
     // get the function handle
     rpc_handle* handle = (rpc_handle*) malloc(sizeof(rpc_handle));
     handle->function_id = id;
@@ -337,18 +326,6 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
 
     // receive payload from server
     rpc_data* response = rpc_receive_payload(client->sock_fd);
-
-    ///
-//    if (response == NULL) {
-//        printf("\n");
-//        printf("RESPONSE NULL!!!\n");
-//        printf("\n");
-//    }
-//    printf("\n");
-//    printf("RESPONSE: data1 = %d ; data2_len = %lu\n", response->data1, response->data2_len);
-//    printf("\n");
-    ///
-
     return response;
 }
 

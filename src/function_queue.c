@@ -87,13 +87,8 @@ int enqueue(queue_f* q, function_t* f) {
     qnode_f* curr = q->node;
     for (int i=0; i < q->size; i++) {
         function_t* f_curr = curr->function;
-        if (f_curr->id == f->id) {
-            /// just for debugging
-//            assert(strcmp(f_curr->f_name, f->f_name) == 0);
-//            printf("server: function_queue: function %s already exists", f->f_name);
-            ///
+        if (f_curr->id == f->id)
             return 1;
-        }
         assert(strcmp(f_curr->f_name, f->f_name) != 0);
         curr = curr->next;
     }
@@ -101,14 +96,6 @@ int enqueue(queue_f* q, function_t* f) {
     q->last->next = qnode_init();
     q->last = q->last->next;
     (q->size)++;
-
-    ///
-//    printf("\n");
-//    printf("ENQUEUE: name %s\n", f->f_name);
-//    printf("ENQUEUE: id %lu\n", f->id);
-//    printf("\n");
-    ///
-
     return 0;
 }
 

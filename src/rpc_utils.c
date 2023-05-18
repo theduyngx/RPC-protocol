@@ -122,14 +122,6 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     int data1 = payload->data1;
     size_t data2_len = payload->data2_len;
 
-    ///
-//    printf("\n");
-//    printf("data2_len = %lu\n", data2_len);
-//    printf("p->data2_len = %lu\n", payload->data2_len);
-//    printf("data2 = %p\n", payload->data2);
-//    printf("\n");
-    ///
-
     // send data1
     int err;
     err = rpc_send_int(socket, data1);
@@ -152,14 +144,6 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     if (other_max < UINT_MAX) pivot = other_max;
     else pivot = UINT_MAX;
 
-    ///
-//    printf("\n");
-//    printf("PIVOT = %lu\n", pivot);
-//    printf("data2_len = %lu\n", data2_len);
-//    printf("\n");
-//    assert(pivot > 0);
-    ///
-
     err = rpc_send_uint(socket, pivot);
     if (err) {
         print_error(TITLE, "cannot send this end's UINT_MAX to other end");
@@ -169,26 +153,10 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     // for data2 - due to it being size_t, it may exceed pivot
     size_t data_curr = data2_len;
     int num_exceed = 0;
-
-    ///
-//    printf("\n");
-//    printf("data_curr (before) = %lu\n", data_curr);
-//    printf("data2_len = %lu\n", data2_len);
-//    printf("\n");
-    ///
-
     while (data_curr > pivot) {
         num_exceed++;
         data_curr -= pivot;
     }
-
-    ///
-//    printf("\n");
-//    printf("data_curr (after) = %lu\n", data_curr);
-//    printf("num_exceed (after) = %d\n", num_exceed);
-//    printf("\n");
-    ///
-
 
     // first, we send the number of times to send data2_len
     err = rpc_send_int(socket, num_exceed);
@@ -265,13 +233,6 @@ rpc_data* rpc_receive_payload(int socket) {
         print_error(TITLE, "cannot receive other end's UINT_MAX");
         return NULL;
     }
-
-    ///
-//    printf("\n");
-//    printf("PIVOT = %lu\n", pivot);
-//    printf("\n");
-//    assert(pivot > 0);
-    ///
 
     // receive number of times taken to send data2_len
     int num_send;
