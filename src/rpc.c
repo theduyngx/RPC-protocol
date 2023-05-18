@@ -341,6 +341,15 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
 
     // receive payload from server
     rpc_data* response = rpc_receive_payload(client->sock_fd);
+
+    ///
+//    printf("\n");
+//    printf("data1 = %d\n", response->data1);
+//    printf("data2_len = %lu\n", response->data2_len);
+//    printf("data2 = %p\n", response->data2);
+//    printf("\n");
+    ///
+
     return response;
 }
 
