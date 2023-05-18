@@ -16,11 +16,11 @@
 struct rpc_server {
     int listen_fd;
     int conn_fd;
-    pid_t recent_pid;
     queue_f* functions;
 };
 
 /* function prototypes to serve clients */
+void* connection_handler(void*);
 function_t* rpc_serve_find(struct rpc_server* server);
 int rpc_serve_call(struct rpc_server* server);
 

@@ -10,7 +10,7 @@
 #include <assert.h>
 #include <string.h>
 #include <netdb.h>
-#include <signal.h>
+#include <pthread.h>
 
 #include "rpc.h"
 #include "rpc_server.h"
@@ -102,7 +102,6 @@ rpc_server *rpc_init_server(int port) {
     assert(server);
     server->listen_fd = listen_fd;
     server->functions = queue_init();
-    server->recent_pid = -1;
     assert(server->listen_fd && server->functions);
     return server;
 }
@@ -134,6 +133,18 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 }
 
 
+void* check_flag(void* object) {
+    rpc_server* server = (rpc_server*) object;
+    int flag = ERROR;
+    while (rpc_receive_int(server->conn_fd, &flag) == 0) {
+        if      (flag == FIND_SERVICE) rpc_serve_find(server);
+        else if (flag == CALL_SERVICE) rpc_serve_call(server);
+        else    break;
+    }
+    return NULL;
+}
+
+
 /**
  * Serve the clients - accepting their connections, decompress the payload, and call the
  * function as requested.
@@ -142,7 +153,6 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 _Noreturn void rpc_serve_all(rpc_server *server) {
     char* TITLE = "rpc-server: rpc_serve_all";
 
-    pid_t pid;
     while (1) {
         // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
@@ -154,32 +164,11 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
             continue;
         }
         server->conn_fd = conn_fd;
-        if (server->recent_pid != -1)
-            kill(server->recent_pid, SIGTERM);
 
-        /// Create a new process
-        pid = fork();
-        if (pid < 0) {
-            print_error(TITLE, "connection process cannot be created");
-            continue;
-        }
-        // child process
-        else if (pid == 0) {
-            close(server->listen_fd);
-            // receive flag to check which service server must provide
-            int flag = ERROR;
-            while (rpc_receive_int(server->conn_fd, &flag) == 0) {
-                if      (flag == FIND_SERVICE) rpc_serve_find(server);
-                else if (flag == CALL_SERVICE) rpc_serve_call(server);
-                else    break;
-            }
-            close(server->conn_fd);
-        }
-        // parent process
-        else {
-            close(server->conn_fd);
-            server->recent_pid = pid;
-        }
+        /// Create a new thread
+        pthread_t thread;
+        pthread_create(&thread, NULL, check_flag, server);
+        pthread_join(thread, NULL);
     }
 }
 
