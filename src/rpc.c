@@ -76,10 +76,10 @@ rpc_server *rpc_init_server(int port) {
     int re = 1;
     err  = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
                       &re, sizeof re);
-    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
-                      &timeout, sizeof timeout);
-    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
-                      &timeout, sizeof timeout);
+//    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
+//                      &timeout, sizeof timeout);
+//    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
+//                      &timeout, sizeof timeout);
     if (err < 0) {
         print_error(TITLE, "setsockopt unsuccessful");
         return NULL;
