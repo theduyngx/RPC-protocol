@@ -318,7 +318,6 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     if (err) {
         fprintf(stderr, "rpc-client: rpc_call - "
                         "cannot send handle to server for verification\n");
-        rpc_data_free(payload);
         return NULL;
     }
 
@@ -328,25 +327,32 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     if (err) {
         fprintf(stderr, "rpc-client: rpc_call - "
                         "cannot receive verification flag from server\n");
-        rpc_data_free(payload);
         return NULL;
     }
     if (flag < 0) {
         fprintf(stderr, "rpc-client: rpc_call - "
                         "id verification failed\n");
-        rpc_data_free(payload);
         return NULL;
     }
 
     // send payload to server
     err = rpc_send_payload(client->sock_fd, payload);
-    rpc_data_free(payload);
-    // error messages are implicit in function call
-    if (err)
+    if (err) {
+        fprintf(stderr, "rpc-client: rpc_call - "
+                       "cannot send payload to server\n");
         return NULL;
+    }
 
     // receive payload from server
     rpc_data* response = rpc_receive_payload(client->sock_fd);
+    if (response == NULL) {
+        printf("\n");
+        printf("RESPONSE NULL!!!\n");
+        printf("\n");
+    }
+    printf("\n");
+    printf("RESPONSE: data1 = %d ; data2_len = %lu\n", response->data1, response->data2_len);
+    printf("\n");
     return response;
 }
 
@@ -365,11 +371,8 @@ void rpc_close_client(rpc_client *client) {
  * @param data the RPC data
  */
 void rpc_data_free(rpc_data* data) {
-    if (data == NULL) {
-        return;
-    }
-    if (data->data2 != NULL) {
+    if (data == NULL) return;
+    if (data->data2 != NULL)
         free(data->data2);
-    }
     free(data);
 }

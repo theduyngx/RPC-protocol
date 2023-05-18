@@ -275,23 +275,30 @@ rpc_data* rpc_receive_payload(int socket) {
         return NULL;
 
     // otherwise, receive the package
-    size_t total = pivot * num_send + remainder;
-    char buffer[total+1];
-    ssize_t n = recv(socket, buffer, total, 0);
-    if (n < 0) {
-        fprintf(stderr, "rpc-helper: rpc_receive_payload - "
-                        "cannot receive data2 from other end\n");
-        return NULL;
+    size_t data2_len = pivot * num_send + remainder;
+    void* data2;
+    if (data2_len == 0)
+        data2 = NULL;
+
+    // receive data2
+    else {
+        char buffer[data2_len + 1];
+        ssize_t n = recv(socket, buffer, data2_len, 0);
+        if (n < 0) {
+            fprintf(stderr, "rpc-helper: rpc_receive_payload - "
+                            "cannot receive data2 from other end\n");
+            return NULL;
+        }
+        buffer[data2_len] = '\0';
+        data2 = (void *) malloc(data2_len * sizeof(void));
+        assert(data2_len == n);
+        memcpy(data2, buffer, data2_len);
     }
-    buffer[total] = '\0';
-    void* data2 = (void*) malloc(total * sizeof(void));
-    assert(total == n);
-    memcpy(data2, buffer, total);
 
     // return the payload
     rpc_data* payload = (rpc_data*) malloc(sizeof(rpc_data));
     payload->data1 = data1;
-    payload->data2_len = total;
+    payload->data2_len = data2_len;
     payload->data2 = data2;
     return payload;
 }

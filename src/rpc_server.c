@@ -46,8 +46,7 @@ function_t* rpc_serve_find(struct rpc_server* server) {
     assert(name_len == n);
     name_buffer[n] = '\0';
 
-    // check if the function of requested name exists
-    // do note that id will be -1 if no handler is found
+    // check if the function of requested name exists with flag verification
     int flag = -1;
     function_t* handler = search(server->functions, name_buffer);
     if (handler == NULL)
@@ -120,10 +119,8 @@ int rpc_serve_call(struct rpc_server* server, function_t* function) {
 
     // read the function's payload
     rpc_data* payload = rpc_receive_payload(server->conn_fd);
-    if (payload == NULL) {
-        err = -1;
-        goto cleanup;
-    }
+    if (payload == NULL)
+        return -1;
 
     // call the function
     rpc_handler handler = function->f_handler;
@@ -134,10 +131,5 @@ int rpc_serve_call(struct rpc_server* server, function_t* function) {
     if (err)
         fprintf(stderr, "server: rpc_serve_all - "
                         "cannot send the response data to client\n");
-
-    // close the sockets and free structures
-    rpc_data_free(response);
-    cleanup:
-    rpc_data_free(payload);
     return err;
 }
