@@ -5,8 +5,8 @@
  *           the server RPC).
  */
 
-#ifndef PROJECT1_CLION_UTILS_H
-#define PROJECT1_CLION_UTILS_H
+#ifndef PROJECT2_FUNCTION_QUEUE_H
+#define PROJECT2_FUNCTION_QUEUE_H
 
 #include <stdint.h>
 #include "rpc.h"
@@ -46,4 +46,4 @@ function_t* search(queue_f* functions, char* name);
 function_t* search_id(queue_f* functions, uint64_t id);
 __attribute__((unused)) void free_queue(queue_f* q);
 
-#endif //PROJECT1_CLION_UTILS_H
+#endif //PROJECT2_FUNCTION_QUEUE_H

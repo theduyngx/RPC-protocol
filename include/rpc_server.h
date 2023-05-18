@@ -8,6 +8,7 @@
 #ifndef PROJECT2_RPC_SERVER_H
 #define PROJECT2_RPC_SERVER_H
 
+#include <unistd.h>
 #include "function_queue.h"
 
 
@@ -15,6 +16,7 @@
 struct rpc_server {
     int listen_fd;
     int conn_fd;
+    pid_t recent_pid;
     queue_f* functions;
 };
 

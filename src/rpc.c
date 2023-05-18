@@ -10,7 +10,8 @@
 #include <assert.h>
 #include <string.h>
 #include <netdb.h>
-#include <unistd.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "rpc.h"
 #include "rpc_server.h"
@@ -32,6 +33,7 @@
  */
 rpc_server *rpc_init_server(int port) {
     char* TITLE = "rpc-server: rpc_init_server";
+    int QUEUE_SIZE = 20;
 
     // sockets
     int listen_fd = 0;
@@ -93,7 +95,7 @@ rpc_server *rpc_init_server(int port) {
         return NULL;
     }
     freeaddrinfo(results);
-    int listen_queue_size = 10;
+    int listen_queue_size = QUEUE_SIZE;
     listen(listen_fd, listen_queue_size);
 
     // initializing rpc server structure and add its listener
@@ -140,7 +142,7 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 _Noreturn void rpc_serve_all(rpc_server *server) {
     char* TITLE = "rpc-server: rpc_serve_all";
 
-    int pid;
+    pid_t pid;
     while (1) {
         // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
@@ -170,10 +172,13 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
                 else    break;
             }
             close(server->conn_fd);
+            kill(server->recent_pid, SIGTERM);
         }
         // parent process
-        else
+        else {
             close(server->conn_fd);
+            server->recent_pid = pid;
+        }
     }
 }
 
