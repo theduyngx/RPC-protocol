@@ -33,7 +33,6 @@ CLI_IN  = client.in
 SRV_IN  = server.in
 CLI_OUT = client.out
 SRV_OUT = server.out
-#TEST    = $()
 
 
 
@@ -93,11 +92,6 @@ $(CLI_DB): $(CLI_SRV)$(CLI_A)
 
 
 ### ------------------------- DEBUGGING TEST CASES ------------------------- ###
-
-#$(TEST)-srv:
-#	./$(SRV_DB) < $(CASES)${$@:0:4}/$(SRV_IN)
-#$(TEST)-cli:
-#	./$(CLI_DB) < $(CASES)${$@:0:4}/$(CLI_IN)
 
 1+1-srv:
 	./$(SRV_DB) < $(CASES)1+1/$(SRV_IN)
@@ -178,4 +172,4 @@ shortcut:
 	make clean
 	make
 	make debug
-	make endian2-srv
+	make endian3-srv
