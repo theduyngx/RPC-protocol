@@ -154,10 +154,9 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         // receive flag to check which service server must provide
         int flag = ERROR;
         while (rpc_receive_int(server->conn_fd, &flag) == 0) {
-            if      (flag == ERROR)        break;
-            else if (flag == FIND_SERVICE) rpc_serve_find(server);
+            if      (flag == FIND_SERVICE) rpc_serve_find(server);
             else if (flag == CALL_SERVICE) rpc_serve_call(server);
-            flag = ERROR;
+            else    break;
         }
     }
 }

@@ -44,14 +44,14 @@ function_t* rpc_serve_find(struct rpc_server* server) {
     name_buffer[n] = '\0';
 
     // check if the function of requested name exists with flag verification
-    int flag = -1;
+    int flag = ERROR;
     function_t* handler = search(server->functions, name_buffer);
     if (handler == NULL)
         print_error(TITLE, "cannot find requested function's name");
     else
         flag = 0;
 
-    // send flag to client, -1 means failure
+    // send flag to client, ERROR (or -1) means failure
     err = rpc_send_int(server->conn_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send function's flag to client");
@@ -86,7 +86,7 @@ int rpc_serve_call(struct rpc_server* server) {
     err = rpc_receive_uint(server->conn_fd, &id);
     if (err) {
         print_error(TITLE, "cannot receive function's id verification from client");
-        return -1;
+        return ERROR;
     }
 
     // send verification flag to client
@@ -95,18 +95,18 @@ int rpc_serve_call(struct rpc_server* server) {
     err = rpc_send_int(server->conn_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send verification flag to client");
-        return -1;
+        return ERROR;
     }
     if (flag < 0) {
         print_error(TITLE,
                     "verification failed; handle and handler have different ids");
-        return -1;
+        return ERROR;
     }
 
     // read the function's payload
     rpc_data* payload = rpc_receive_payload(server->conn_fd);
     if (payload == NULL)
-        return -1;
+        return ERROR;
 
     // call the function
     rpc_handler handler = function->f_handler;

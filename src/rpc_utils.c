@@ -12,7 +12,7 @@
 #include <netdb.h>
 
 #include "rpc_utils.h"
-#define  DEBUG  1
+#define  DEBUG  0
 
 /*
  * Unsigned integer 64-bit network and system conversion functions. This is used to

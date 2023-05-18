@@ -8,7 +8,6 @@
  * whenever adding another function to the queue.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -97,14 +96,6 @@ int enqueue(queue_f* q, function_t* f) {
     q->last->next = qnode_init();
     q->last = q->last->next;
     (q->size)++;
-
-    /////
-    printf("\n");
-    printf("ENQUEUE: function name is %s\n", f->f_name);
-    printf("ENQUEUE: function hashed is %lu\n", f->id);
-    printf("\n");
-    /////
-
     return 0;
 }
 
@@ -135,17 +126,7 @@ function_t* dequeue(queue_f* q) {
  *                  or the function structure if found
  */
 function_t* search(queue_f* functions, char* name) {
-    // hash the name
-
-    /////
     uint64_t hashed = hash((unsigned char*) name);
-    printf("\n");
-    printf("SEARCH: function name is %s\n", name);
-    printf("SEARCH: function hashed is %lu\n", hashed);
-    printf("\n");
-    /////
-
-    // check if the function of requested id exists
     qnode_f *curr = functions->node;
     for (int i=0; i < functions->size; i++) {
         if (hashed == curr->function->id)
