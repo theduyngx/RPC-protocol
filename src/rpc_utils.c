@@ -153,9 +153,9 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     ///
-    printf("\n");
-    printf("data2_len = %lu\n", data2_len);
-    printf("\n");
+//    printf("\n");
+//    printf("data2_len = %lu\n", data2_len);
+//    printf("\n");
     ///
 
     // send data1
