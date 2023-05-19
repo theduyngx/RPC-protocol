@@ -35,6 +35,12 @@ rpc_server *rpc_init_server(int port) {
     int listen_fd = 0;
     struct addrinfo hints, *results;
 
+    // timeout
+    struct timeval timeout = {
+            .tv_sec  = 10,
+            .tv_usec = 0
+    };
+
     // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_INET6;
@@ -67,8 +73,12 @@ rpc_server *rpc_init_server(int port) {
 
     // set options to reusable address
     int re = 1;
-    err = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
+    err  = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
                       &re, sizeof re);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
+                      &timeout, sizeof timeout);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
+                      &timeout, sizeof timeout);
     if (err < 0) {
         print_error(TITLE, "setsockopt unsuccessful");
         return NULL;
@@ -139,6 +149,7 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
         int conn_fd = accept(server->listen_fd,
                              (struct sockaddr *) &client_addr, &client_addr_size);
         if (conn_fd < 0) {
+            threads_join(server);
             print_error(TITLE, "connect socket cannot accept connections");
             continue;
         }

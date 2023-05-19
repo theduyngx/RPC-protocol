@@ -200,3 +200,15 @@ void new_connection_update(rpc_server* server) {
     pthread_cond_signal(&condition);
     pthread_mutex_unlock(&mutex);
 }
+
+
+/**
+ * Joining server's threads. This will be called periodically.
+ * @param server
+ */
+void threads_join(rpc_server* server) {
+    for (int i=0; i < server->num_connections; i++) {
+        pthread_t thread = server->threads[i];
+        pthread_join(thread, NULL);
+    }
+}

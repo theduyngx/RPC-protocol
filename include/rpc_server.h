@@ -32,5 +32,6 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd);
 /* threading function prototypes */
 void rpc_server_threads_init(rpc_server* server);
 void new_connection_update(rpc_server* server);
+void threads_join(rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H
