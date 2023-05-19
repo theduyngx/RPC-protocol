@@ -38,7 +38,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
 
     // receive the function's name from client
     char name_buffer[name_len+1];
-    memset(name_buffer, 0, name_len+1);
+    memset(name_buffer, '0', name_len);
     ssize_t n = recv(conn_fd, name_buffer, name_len, 0);
     if (n < 0) {
         print_error(TITLE, "cannot receive client's requested function name");

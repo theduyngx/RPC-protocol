@@ -2,6 +2,9 @@ Student    : The Duy Nguyen
 Login ID   : theduyn
 Student ID : 1100548
 
+=======================================
+PART 3.3
+
 ---------
 Q1:
 The server perhaps should not accept calls from everyone. This is primarily due to security reasons.
@@ -27,29 +30,29 @@ TCP was the used protocol. There are several strengths in using TCP:
    transmitting packets over the network.
 3. It is stream-oriented, meaning TCP will segment the data however is required for the users.
 
-In contrast to UDP, however, while the mentioned points are its strengths, UDP is more advantageous in:
-1. Being more lightweight (lighter header size, minimal error recovery check, etc.) meaning less overhead
-   and faster speed.
-2. Being connectionless, meaning it is not restricted to a pair of client and user, and 1 end system can
-   therefore send lots of packets to others.
+In contrast to UDP, however, while the mentioned points are its strengths, UDP is better at:
+1. Being more lightweight (lighter header size, minimal error recovery check, etc.), meaning less
+   overhead and faster in speed.
+2. Being connectionless, meaning it is not restricted to a pair of client and user, and one end system
+   can therefore send lots of packets to others.
 3. Checking data integrity - since it is message-stream, not byte-stream, which ensures the separation
    and order of the data itself.
-That said, TCP, as mentioned above, has the strengths that UDP does not have which is deemed important
-for the nature of the client-server model in the project.
+That said, TCP, as mentioned above, has the strengths that UDP does not have, all of which are deemed
+to be important for the nature of the client-server model in the project.
 
 Compare to QUIC, on the other hand, TCP pales in comparison.
 1. QUIC ensures security with encryption and other security measures.
 2. QUIC is faster than TCP, as its aim is to reduce latency. Specifically, it reduces the handshake
    protocol in TCP, and among other techniques.
 3. It utilizes multiplexing with push.
-As of now, QUIC has not been as widely used as TCP. For the purpose of industry standard with widespread
-and well-known implementations, I have chosen TCP as the protocol.
+As of now, QUIC has not been as widely used as TCP. For the purpose of benefiting from industry
+standard with widespread and well-known implementations, I have chosen TCP as the protocol.
 
 
 ---------
 Q4:
 The server's listening socket should be created in rpc_server_init.
-The server's client connection socket should be created in rpc_serve_all. Unlike the listen socket, once
+The server's client connection socket should be created in rpc_serve_all. Unlike listen socket, once
 serve all is called, it should only care about accepting connections from clients and respond to them.
 
 
@@ -58,8 +61,8 @@ Q5:
 rpc_client should be dynamically allocated because clients will almost always inevitably close their
 connection, and that should be effectively freed from the program.
 rpc_server in theory should be statically allocated because it is "always on". However, dynamically
-allocated server allows for convenient argument passing in functions which may also be beneficial. In the
-end, either way should be fine for rpc_server.
+allocated server allows for convenient argument passing in functions which may also be beneficial. In
+the end, either way should be fine for rpc_server.
 
 
 ---------
@@ -68,3 +71,10 @@ Regardless of whether which end system uses which byte ordering, all it should b
 convert its byte ordering to the network's when sending over the network, and convert the byte ordering
 of the data received on the network back to its ordering. Therefore, in theory, this should not pose a
 significant issue.
+
+
+=======================================
+PART 3.4
+
+RPC Protocol Description:
+...
