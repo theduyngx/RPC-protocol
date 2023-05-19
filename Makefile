@@ -51,7 +51,7 @@ $(CLI): $(CLI_C)
 
 # object files
 $(OUT_DIR)/%.o: $(SRC_DIR)%.c $(INC_DIR)%.h | object
-	$(CC) $(CFLAGS) -c -o $@ $<
+	$(CC) $(CFLAGS) -c -o $@ $< $(GDB)
 
 object:
 	mkdir $(OUT_DIR)
