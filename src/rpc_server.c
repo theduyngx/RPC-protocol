@@ -115,14 +115,17 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
         return ERROR;
 
     // call the function
-    if (function == NULL || function->f_handler == NULL)
+    if (function == NULL || function->f_handler == NULL) {
+        rpc_data_free(payload);
         return ERROR;
+    }
     rpc_handler handler = function->f_handler;
     rpc_data* response = handler(payload);
     rpc_data_free(payload);
 
     // send the response to client
     err = rpc_send_payload(conn_fd, response);
+    rpc_data_free(response);
     if (err)
         print_error(TITLE, "cannot send the response data to client");
     return err;

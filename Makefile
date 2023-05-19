@@ -8,6 +8,7 @@ INC     = -I$(INC_DIR)
 GDB     = -g
 CFLAGS  = -Wall
 CFLAGS += $(INC)
+VALGRND = valgrind --leak-check=full --show-origins=yes
 
 # client-server executable tags
 SRV     = rpc-server
@@ -166,7 +167,6 @@ endian3-srv:
 	./$(SRV_DB) < $(CASES)endian3/$(SRV_IN)
 endian3-cli:
 	./$(CLI_DB) < $(CASES)endian3/$(CLI_IN)
-
 
 shortcut:
 	make clean
