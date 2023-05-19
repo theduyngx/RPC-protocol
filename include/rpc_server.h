@@ -37,8 +37,11 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd);
 int package_init(rpc_server* server);
 
 /* thread pool architecture function prototypes */
-__attribute__((unused)) void rpc_server_threads_init(rpc_server* server);
-__attribute__((unused)) void new_connection_update(rpc_server* server);
-__attribute__((unused)) void threads_detach(rpc_server* server);
+__attribute__((unused))
+void rpc_server_threads_init(rpc_server* server);
+__attribute__((unused))
+void new_connection_update(rpc_server* server);
+__attribute__((unused))
+void threads_detach(rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H

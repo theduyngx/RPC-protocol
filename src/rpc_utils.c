@@ -60,7 +60,7 @@ void print_error(__attribute__((unused)) char* title,
 int rpc_send_uint(int socket, uint64_t val) {
     uint64_t val_ntw = htonll(val);
     ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
-    return (n < 0);
+    return -(n < 0);
 }
 
 /**
@@ -72,7 +72,7 @@ int rpc_send_uint(int socket, uint64_t val) {
 int rpc_receive_uint(int socket, uint64_t* ret) {
     uint64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
-    if (n < 0) return 1;
+    if (n < 0) return -1;
     *ret = ntohll(ret_ntw);
     return 0;
 }
@@ -87,7 +87,7 @@ int rpc_receive_uint(int socket, uint64_t* ret) {
 int rpc_send_int(int socket, int val) {
     uint64_t val_ntw = htonll((uint64_t) val);
     ssize_t n = send(socket, &val_ntw, sizeof val_ntw, 0);
-    return (n < 0);
+    return -(n < 0);
 }
 
 /**
@@ -99,7 +99,21 @@ int rpc_send_int(int socket, int val) {
 int rpc_receive_int(int socket, int* ret) {
     uint64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
-    if (n < 0) return 1;
+    if (n < 0) return -1;
+    uint64_t ret64 = ntohll(ret_ntw);
+
+    // negative integer conversion
+    if (ret64 >= INT_MAX)
+        *ret = -(int) (-ret64);
+    else *ret = (int) ret64;
+    return 0;
+}
+
+
+int rpc_receive_flag(int socket, int* ret) {
+    uint64_t ret_ntw;
+    ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
+    if (n <= 0) return -1;
     uint64_t ret64 = ntohll(ret_ntw);
 
     // negative integer conversion
