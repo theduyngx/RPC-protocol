@@ -26,13 +26,19 @@ struct rpc_server {
     pthread_t* threads;
 };
 
+/* Thread package */
+typedef struct thread_package package_t;
+
 /* function prototypes to serve clients */
 function_t* rpc_serve_find(struct rpc_server* server, int conn_fd);
 int rpc_serve_call(struct rpc_server* server, int conn_fd);
 
-/* threading function prototypes */
-void rpc_server_threads_init(rpc_server* server);
-void new_connection_update(rpc_server* server);
-void threads_join(rpc_server* server);
+/* simple multi-threading function prototypes */
+void package_init(rpc_server* server);
+
+/* thread pool architecture function prototypes */
+__attribute__((unused)) void rpc_server_threads_init(rpc_server* server);
+__attribute__((unused)) void new_connection_update(rpc_server* server);
+__attribute__((unused)) void threads_detach(rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H

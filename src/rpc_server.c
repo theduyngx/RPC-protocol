@@ -37,7 +37,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     }
 
     // receive the function's name from client
-    char* name_buffer = (char*) malloc(name_len+1);
+    char name_buffer[name_len+1];
     memset(name_buffer, 0, name_len+1);
     ssize_t n = recv(conn_fd, name_buffer, name_len, 0);
     if (n < 0) {
@@ -51,7 +51,6 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     // check if the function of requested name exists with flag verification
     int flag = ERROR;
     function_t* handler = search(server->functions, name_buffer);
-    free(name_buffer);
     if (handler == NULL)
         print_error(TITLE, "cannot find requested function's name");
     else
@@ -133,7 +132,53 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
 }
 
 
-/* ----------------------------- THREADING FUNCTIONALITIES ----------------------------- */
+/* ----------------------------- NORMAL THREADING ----------------------------- */
+
+/* Thread package, which includes needed data to pass in thread package handler */
+struct thread_package {
+    rpc_server* server;
+    int thread_fd;
+};
+
+void* package_handler(void* package_obj);
+
+
+/**
+ * Initialize the thread package.
+ * @param server the server RPC
+ */
+void package_init(rpc_server* server) {
+    pthread_t thread;
+    package_t* package = (package_t*) malloc(sizeof(package_t));
+    package->server = server;
+    package->thread_fd = server->conn_fd;
+    pthread_create(&thread, NULL, package_handler, package);
+    pthread_detach(thread);
+}
+
+
+/**
+ * The package handler, which is what each thread will be executing. Specifically,
+ * each thread will work to serve a client.
+ * @param package_obj the package
+ * @return            null pointer with no indication
+ */
+void* package_handler(void* package_obj) {
+    package_t* package = (package_t*) package_obj;
+    rpc_server* server = package->server;
+    int thread_fd = package->thread_fd;
+    int flag = ERROR;
+    while (rpc_receive_int(thread_fd, &flag) == 0) {
+        if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
+        else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
+        else    break;
+    }
+    if (package_obj) free(package_obj);
+    return NULL;
+}
+
+
+/* ----------------------------- THREAD POOL ----------------------------- */
 
 /* Mutex and thread condition */
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -146,6 +191,7 @@ _Noreturn void* thread_serve(void* obj);
  * Initialize the server's threads.
  * @param server the server RPC
  */
+ __attribute__((unused))
 void rpc_server_threads_init(rpc_server* server) {
     int pool_size = server->pool_size;
     server->threads = (pthread_t*) malloc(pool_size * sizeof(pthread_t));
@@ -195,6 +241,7 @@ _Noreturn void* thread_serve(void* server_obj) {
  * has successfully connected to server.
  * @param server
  */
+__attribute__((unused))
 void new_connection_update(rpc_server* server) {
     pthread_mutex_lock(&mutex);
     (server->num_connections)++;
@@ -207,9 +254,10 @@ void new_connection_update(rpc_server* server) {
  * Joining server's threads. This will be called periodically.
  * @param server
  */
-void threads_join(rpc_server* server) {
+__attribute__((unused))
+void threads_detach(rpc_server* server) {
     for (int i=0; i < server->num_connections; i++) {
         pthread_t thread = server->threads[i];
-        pthread_join(thread, NULL);
+        pthread_detach(thread);
     }
 }

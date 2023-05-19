@@ -8,7 +8,8 @@ INC     = -I$(INC_DIR)
 GDB     = -g
 CFLAGS  = -Wall
 CFLAGS += $(INC)
-VALGRND = valgrind --leak-check=full --show-origins=yes
+VALGRND = valgrind --leak-check=full --track-origins=yes
+#VALGRND =
 
 # client-server executable tags
 SRV     = rpc-server
@@ -94,20 +95,10 @@ $(CLI_DB): $(CLI_SRV)$(CLI_A)
 
 ### ------------------------- DEBUGGING TEST CASES ------------------------- ###
 
-1+1-srv:
-	./$(SRV_DB) < $(CASES)1+1/$(SRV_IN)
-1+1-cli:
-	./$(CLI_DB) < $(CASES)1+1/$(CLI_IN)
-
 127+127-srv:
 	./$(SRV_DB) < $(CASES)127+127/$(SRV_IN)
 127+127-cli:
 	./$(CLI_DB) < $(CASES)127+127/$(CLI_IN)
-
-abc-srv:
-	./$(SRV_DB) < $(CASES)abc/$(SRV_IN)
-abc-cli:
-	./$(CLI_DB) < $(CASES)abc/$(CLI_IN)
 
 bad.client-srv:
 	./$(SRV_DB) < $(CASES)bad.client/$(SRV_IN)
@@ -118,20 +109,6 @@ bad.server-srv:
 	./$(SRV_DB) < $(CASES)bad.server/$(SRV_IN)
 bad.server-cli:
 	./$(CLI_DB) < $(CASES)bad.server/$(CLI_IN)
-
-block1-srv:
-	./$(SRV_DB) < $(CASES)block1/$(SRV_IN)
-block1-cli1:
-	./$(CLI_DB) < $(CASES)block1/client1.in
-block1-cli2:
-	./$(CLI_DB) < $(CASES)block1/client2.in
-
-block2-srv:
-	./$(SRV_DB) < $(CASES)block2/$(SRV_IN)
-block2-cli1:
-	./$(CLI_DB) < $(CASES)block2/client1.in
-block2-cli2:
-	./$(CLI_DB) < $(CASES)block2/client2.in
 
 call2-srv:
 	./$(SRV_DB) < $(CASES)call2/$(SRV_IN)
@@ -167,6 +144,20 @@ endian3-srv:
 	./$(SRV_DB) < $(CASES)endian3/$(SRV_IN)
 endian3-cli:
 	./$(CLI_DB) < $(CASES)endian3/$(CLI_IN)
+
+block1-srv:
+	$(VALGRND) ./$(SRV_DB) < $(CASES)block1/$(SRV_IN)
+block1-cli1:
+	$(VALGRND) ./$(CLI_DB) < $(CASES)block1/client1.in
+block1-cli2:
+	$(VALGRND) ./$(CLI_DB) < $(CASES)block1/client2.in
+
+block2-srv:
+	$(VALGRND) ./$(SRV_DB) < $(CASES)block2/$(SRV_IN)
+block2-cli1:
+	$(VALGRND) ./$(CLI_DB) < $(CASES)block2/client1.in
+block2-cli2:
+	$(VALGRND) ./$(CLI_DB) < $(CASES)block2/client2.in
 
 shortcut:
 	make clean

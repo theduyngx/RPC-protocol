@@ -27,7 +27,7 @@
  * @param port the port number
  * @return     NULL if unsuccessful, or the server RPC if otherwise
  */
-rpc_server *rpc_init_server(int port) {
+rpc_server* rpc_init_server(int port) {
     char* TITLE     = "rpc-server: rpc_init_server";
     int QUEUE_SIZE  = 20;
     int POOL_SIZE   = 20;
@@ -39,8 +39,8 @@ rpc_server *rpc_init_server(int port) {
 
     // timeout
     struct timeval timeout = {
-            .tv_sec  = TIMEOUT_SEC,
-            .tv_usec = 0
+        .tv_sec  = TIMEOUT_SEC,
+        .tv_usec = 0
     };
 
     // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
@@ -99,10 +99,10 @@ rpc_server *rpc_init_server(int port) {
     // initializing rpc server structure and add its listener
     struct rpc_server* server = (struct rpc_server*) malloc(sizeof (struct rpc_server));
     assert(server);
-    server->listen_fd = listen_fd;
-    server->functions = queue_init();
+    server->listen_fd       = listen_fd;
+    server->functions       = queue_init();
+    server->pool_size       = POOL_SIZE;
     server->num_connections = 0;
-    server->pool_size = POOL_SIZE;
     assert(server->listen_fd && server->functions);
     return server;
 }
@@ -137,33 +137,27 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 /**
  * Serve the clients - accepting their connections, decompress the payload, and call the
  * function as requested.
+ * NOTE: There are 2 available methods for using serve all, 1 is thread pool, and the other
+ * is simple multi-threaded architecture that takes in as many clients as needed.
  * @param server the server RPC
  */
 _Noreturn void rpc_serve_all(rpc_server* server) {
     char* TITLE = "rpc-server: rpc_serve_all";
-
-    // threading initialization
-    rpc_server_threads_init(server);
-
     while (1) {
+
         // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
         socklen_t client_addr_size = sizeof client_addr;
         int conn_fd = accept(server->listen_fd,
                              (struct sockaddr *) &client_addr, &client_addr_size);
         if (conn_fd < 0) {
-            threads_join(server);
             print_error(TITLE, "connect socket cannot accept connections");
             continue;
         }
         server->conn_fd = conn_fd;
 
-        // joining pool
-        if (server->num_connections >= server->pool_size - 5)
-            threads_join(server);
-
         // enqueue to let the thread handles the connection
-        new_connection_update(server);
+        package_init(server);
     }
 }
 
