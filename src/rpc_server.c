@@ -159,7 +159,6 @@ int package_init(rpc_server* server) {
     pthread_t thread;
     err  = pthread_create(&thread, NULL, package_handler, package);
     err += pthread_detach(thread);
-    free(package);
     if (err < 0)
         print_error("package_init", "cannot create/detach thread");
     return err;
