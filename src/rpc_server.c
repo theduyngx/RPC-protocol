@@ -13,8 +13,6 @@
 #include "rpc_server.h"
 #include "rpc_utils.h"
 
-#define POOL_SIZE 20
-
 
 /* ----------------------------- SERVICE FUNCTIONALITIES ----------------------------- */
 
@@ -148,8 +146,9 @@ _Noreturn void* thread_serve(void* obj);
  * @param server the server RPC
  */
 void rpc_server_threads_init(rpc_server* server) {
-    server->threads = (pthread_t*) malloc(POOL_SIZE * sizeof(pthread_t));
-    for (int i=0; i < POOL_SIZE; i++) {
+    int pool_size = server->pool_size;
+    server->threads = (pthread_t*) malloc(pool_size * sizeof(pthread_t));
+    for (int i=0; i < pool_size; i++) {
         pthread_create(&(server->threads[i]), NULL,
                        thread_serve, server);
     }
@@ -208,7 +207,7 @@ void new_connection_update(rpc_server* server) {
  * @param server
  */
 void threads_join(rpc_server* server) {
-    for (int i=0; i < POOL_SIZE; i++) {
+    for (int i=0; i < server->num_connections; i++) {
         pthread_t thread = server->threads[i];
         pthread_join(thread, NULL);
     }

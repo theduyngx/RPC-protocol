@@ -21,6 +21,7 @@ struct rpc_server {
     int listen_fd;
     int conn_fd;
     int num_connections;
+    int pool_size;
     queue_f* functions;
     pthread_t* threads;
 };

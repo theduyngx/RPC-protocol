@@ -30,7 +30,8 @@
 rpc_server *rpc_init_server(int port) {
     char* TITLE     = "rpc-server: rpc_init_server";
     int QUEUE_SIZE  = 20;
-    int TIMEOUT_SEC = 3;
+    int POOL_SIZE   = 20;
+    int TIMEOUT_SEC = 5;
 
     // sockets
     int listen_fd = 0;
@@ -101,6 +102,7 @@ rpc_server *rpc_init_server(int port) {
     server->listen_fd = listen_fd;
     server->functions = queue_init();
     server->num_connections = 0;
+    server->pool_size = POOL_SIZE;
     assert(server->listen_fd && server->functions);
     return server;
 }
@@ -155,6 +157,10 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
             continue;
         }
         server->conn_fd = conn_fd;
+
+        // joining pool
+        if (server->num_connections >= server->pool_size - 5)
+            threads_join(server);
 
         // enqueue to let the thread handles the connection
         new_connection_update(server);
