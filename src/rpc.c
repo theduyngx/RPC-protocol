@@ -296,6 +296,7 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     err = rpc_send_int(client->sock_fd, request);
     if (err) {
         print_error(TITLE, "cannot send call service flag to server");
+        free(handle);
         return NULL;
     }
 
@@ -303,8 +304,10 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
     err = rpc_send_uint(client->sock_fd, handle->function_id);
     if (err) {
         print_error(TITLE, "cannot send handle to server for verification");
+        free(handle);
         return NULL;
     }
+    free(handle);
 
     // receive the verification flag, if negative then failure
     int flag = ERROR;
