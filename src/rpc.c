@@ -28,8 +28,9 @@
  * @return     NULL if unsuccessful, or the server RPC if otherwise
  */
 rpc_server *rpc_init_server(int port) {
-    char* TITLE = "rpc-server: rpc_init_server";
-    int QUEUE_SIZE = 20;
+    char* TITLE     = "rpc-server: rpc_init_server";
+    int QUEUE_SIZE  = 20;
+    int TIMEOUT_SEC = 3;
 
     // sockets
     int listen_fd = 0;
@@ -37,7 +38,7 @@ rpc_server *rpc_init_server(int port) {
 
     // timeout
     struct timeval timeout = {
-            .tv_sec  = 10,
+            .tv_sec  = TIMEOUT_SEC,
             .tv_usec = 0
     };
 
