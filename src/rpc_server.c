@@ -136,8 +136,8 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
 
 /* Thread package, which includes needed data to pass in thread package handler */
 struct thread_package {
-    rpc_server* server;
     int thread_fd;
+    rpc_server* server;
 };
 
 void* package_handler(void* package_obj);
@@ -159,8 +159,11 @@ int package_init(rpc_server* server) {
     pthread_t thread;
     err  = pthread_create(&thread, NULL, package_handler, package);
     err += pthread_detach(thread);
-    if (err < 0)
+    if (err < 0) {
+        free(package);
+        pthread_cancel(thread);
         print_error("package_init", "cannot create/detach thread");
+    }
     return err;
 }
 
@@ -174,16 +177,20 @@ int package_init(rpc_server* server) {
 void* package_handler(void* package_obj) {
     package_t* package = (package_t*) package_obj;
     if (package_obj) {
+
+        // unpacking the package
         rpc_server *server = package->server;
         int thread_fd = package->thread_fd;
-        int flag = ERROR;
-        while (rpc_receive_int(thread_fd, &flag) == 0) {
-            if (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
-            else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
-            else break;
-        }
         free(package_obj);
         package_obj = NULL;
+
+        // serve the client
+        int flag = ERROR;
+        while (rpc_receive_int(thread_fd, &flag) == 0) {
+            if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
+            else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
+            else    break;
+        }
     }
     return NULL;
 }
