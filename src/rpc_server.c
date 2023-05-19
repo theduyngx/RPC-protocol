@@ -18,17 +18,18 @@
 
 /**
  * Server RPC function to serve the find function request from client.
- * @param server the server RPC
- * @return       NULL if no function is found or an error occurs,
- *               or the function structure to serve the call later
+ * @param server  the server RPC
+ * @param conn_fd the connection socket to a specific client
+ * @return        NULL if no function is found or an error occurs,
+ *                or the function structure to serve the call later
  */
-function_t* rpc_serve_find(struct rpc_server* server) {
+function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     char* TITLE = "rpc-server: rpc_serve_all";
 
     // receive the name's length from client
     int err;
     uint64_t name_len;
-    err = rpc_receive_uint(server->conn_fd, &name_len);
+    err = rpc_receive_uint(conn_fd, &name_len);
     if (err) {
         print_error(TITLE, "cannot receive the length of client's "
                            "requested function's name");
@@ -37,7 +38,7 @@ function_t* rpc_serve_find(struct rpc_server* server) {
 
     // receive the function's name from client
     char name_buffer[name_len+1];
-    ssize_t n = recv(server->conn_fd, name_buffer, name_len, 0);
+    ssize_t n = recv(conn_fd, name_buffer, name_len, 0);
     if (n < 0) {
         print_error(TITLE, "cannot receive client's requested function name");
         return NULL;
@@ -55,7 +56,7 @@ function_t* rpc_serve_find(struct rpc_server* server) {
         flag = 0;
 
     // send flag to client, ERROR (or -1) means failure
-    err = rpc_send_int(server->conn_fd, flag);
+    err = rpc_send_int(conn_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send function's flag to client");
         return NULL;
@@ -64,7 +65,7 @@ function_t* rpc_serve_find(struct rpc_server* server) {
     // on success
     if (flag == 0) {
         // finally, we send the function's id to the client
-        err = rpc_send_uint(server->conn_fd, handler->id);
+        err = rpc_send_uint(conn_fd, handler->id);
         if (err) {
             print_error(TITLE, "cannot send function's id to client");
             return NULL;
@@ -78,15 +79,16 @@ function_t* rpc_serve_find(struct rpc_server* server) {
  * Server RPC function to serve the call request from client. It will first try to receive
  * from the client the appropriate RPC data packet, and call the handler accordingly.
  * @param server   the server RPC
+ * @param conn_fd  the connection socket to a specific client
  * @return         0 if successful, and otherwise if not
  */
-int rpc_serve_call(struct rpc_server* server) {
+int rpc_serve_call(struct rpc_server* server, int conn_fd) {
     char* TITLE = "server: rpc_serve_all";
 
     // read the function's id to get the function for call
     int err;
     uint64_t id;
-    err = rpc_receive_uint(server->conn_fd, &id);
+    err = rpc_receive_uint(conn_fd, &id);
     if (err) {
         print_error(TITLE, "cannot receive function's id verification from client");
         return ERROR;
@@ -95,7 +97,7 @@ int rpc_serve_call(struct rpc_server* server) {
     // send verification flag to client
     function_t* function = search_id(server->functions, id);
     int flag = -(function == NULL);
-    err = rpc_send_int(server->conn_fd, flag);
+    err = rpc_send_int(conn_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send verification flag to client");
         return ERROR;
@@ -107,7 +109,7 @@ int rpc_serve_call(struct rpc_server* server) {
     }
 
     // read the function's payload
-    rpc_data* payload = rpc_receive_payload(server->conn_fd);
+    rpc_data* payload = rpc_receive_payload(conn_fd);
     if (payload == NULL)
         return ERROR;
 
@@ -118,7 +120,7 @@ int rpc_serve_call(struct rpc_server* server) {
     rpc_data* response = handler(payload);
 
     // send the response to client
-    err = rpc_send_payload(server->conn_fd, response);
+    err = rpc_send_payload(conn_fd, response);
     if (err)
         print_error(TITLE, "cannot send the response data to client");
     return err;
@@ -130,6 +132,7 @@ int rpc_serve_call(struct rpc_server* server) {
 /* Mutex and thread condition */
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+
 _Noreturn void* thread_serve(void* obj);
 
 
@@ -140,9 +143,10 @@ _Noreturn void* thread_serve(void* obj);
 void rpc_server_threads_init(rpc_server* server) {
     int POOL_SIZE = 20;
     server->threads = (pthread_t*) malloc(POOL_SIZE * sizeof(pthread_t));
-    for (int i=0; i < POOL_SIZE; i++)
+    for (int i=0; i < POOL_SIZE; i++) {
         pthread_create(&(server->threads[i]), NULL,
                        thread_serve, server);
+    }
 }
 
 
@@ -150,25 +154,30 @@ void rpc_server_threads_init(rpc_server* server) {
  * Thread handler function. This will make the thread check if there are any clients
  * un-served and will thus serve them if resources are available. It uses a mutex lock
  * and a conditional variable to ensure efficient resource usage.
- * @param obj the server
- * @return    nothing - the threads are expected to run forever
+ * @param server_obj the server
+ * @return           nothing - the threads are expected to run forever
  */
-_Noreturn void* thread_serve(void* obj) {
-    rpc_server* server = (rpc_server*) obj;
+_Noreturn void* thread_serve(void* server_obj) {
+    rpc_server* server = (rpc_server*) server_obj;
     while (1) {
+        int thread_fd = -1;
+
         // check if any client is not yet served
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&condition, &mutex);
         int cond = (server->num_connections > 0);
-        if (cond)  (server->num_connections)--;
+        if (cond) {
+            (server->num_connections)--;
+            thread_fd = server->conn_fd;
+        }
         pthread_mutex_unlock(&mutex);
 
         // serve the client
         if (cond) {
             int flag = ERROR;
-            while (rpc_receive_int(server->conn_fd, &flag) == 0) {
-                if      (flag == FIND_SERVICE) rpc_serve_find(server);
-                else if (flag == CALL_SERVICE) rpc_serve_call(server);
+            while (rpc_receive_int(thread_fd, &flag) == 0) {
+                if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
+                else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
                 else    break;
             }
         }

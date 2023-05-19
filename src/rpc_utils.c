@@ -12,7 +12,7 @@
 #include <netdb.h>
 
 #include "rpc_utils.h"
-#define  DEBUG  1
+#define  DEBUG  0
 
 /*
  * Unsigned integer 64-bit network and system conversion functions. This is used to
@@ -172,7 +172,6 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     uint64_t pivot;
     if (other_max < UINT_MAX) pivot = other_max;
     else pivot = UINT_MAX;
-
     err = rpc_send_uint(socket, pivot);
     if (err) {
         print_error(TITLE, "cannot send this end's UINT_MAX to other end");

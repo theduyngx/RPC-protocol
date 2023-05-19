@@ -26,8 +26,8 @@ struct rpc_server {
 };
 
 /* function prototypes to serve clients */
-function_t* rpc_serve_find(struct rpc_server* server);
-int rpc_serve_call(struct rpc_server* server);
+function_t* rpc_serve_find(struct rpc_server* server, int conn_fd);
+int rpc_serve_call(struct rpc_server* server, int conn_fd);
 
 /* threading function prototypes */
 void rpc_server_threads_init(rpc_server* server);
