@@ -10,15 +10,12 @@
 #include <assert.h>
 #include <string.h>
 #include <netdb.h>
-#include <pthread.h>
 
 #include "rpc.h"
 #include "rpc_server.h"
 #include "rpc_utils.h"
 
 #define NONBLOCKING
-#define FIND_SERVICE (int) 0
-#define CALL_SERVICE (int) 1
 
 
 /* ------------------------------------- SERVER STUB ------------------------------------- */
@@ -102,6 +99,7 @@ rpc_server *rpc_init_server(int port) {
     assert(server);
     server->listen_fd = listen_fd;
     server->functions = queue_init();
+    server->num_connections = 0;
     assert(server->listen_fd && server->functions);
     return server;
 }
@@ -133,25 +131,16 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
 }
 
 
-void* check_flag(void* object) {
-    rpc_server* server = (rpc_server*) object;
-    int flag = ERROR;
-    while (rpc_receive_int(server->conn_fd, &flag) == 0) {
-        if      (flag == FIND_SERVICE) rpc_serve_find(server);
-        else if (flag == CALL_SERVICE) rpc_serve_call(server);
-        else    break;
-    }
-    return NULL;
-}
-
-
 /**
  * Serve the clients - accepting their connections, decompress the payload, and call the
  * function as requested.
  * @param server the server RPC
  */
-_Noreturn void rpc_serve_all(rpc_server *server) {
+_Noreturn void rpc_serve_all(rpc_server* server) {
     char* TITLE = "rpc-server: rpc_serve_all";
+
+    // threading initialization
+    rpc_server_threads_init(server);
 
     while (1) {
         // accept connection and update connection socket for server RPC
@@ -165,10 +154,8 @@ _Noreturn void rpc_serve_all(rpc_server *server) {
         }
         server->conn_fd = conn_fd;
 
-        /// Create a new thread
-        pthread_t thread;
-        pthread_create(&thread, NULL, check_flag, server);
-        pthread_join(thread, NULL);
+        // enqueue to let the thread handles the connection
+        new_connection_update(server);
     }
 }
 
@@ -329,7 +316,7 @@ rpc_data* rpc_call(rpc_client *client, rpc_handle* handle, rpc_data* payload) {
         return NULL;
     }
 
-    // receive the verification flag, if negative the failure
+    // receive the verification flag, if negative then failure
     int flag = ERROR;
     err = rpc_receive_int(client->sock_fd, &flag);
     if (err) {

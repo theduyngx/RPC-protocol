@@ -9,19 +9,28 @@
 #define PROJECT2_RPC_SERVER_H
 
 #include <unistd.h>
+#include <pthread.h>
 #include "function_queue.h"
+
+#define FIND_SERVICE (int) 0
+#define CALL_SERVICE (int) 1
 
 
 /* RPC server structure */
 struct rpc_server {
     int listen_fd;
     int conn_fd;
+    int num_connections;
     queue_f* functions;
+    pthread_t* threads;
 };
 
 /* function prototypes to serve clients */
-void* connection_handler(void*);
 function_t* rpc_serve_find(struct rpc_server* server);
 int rpc_serve_call(struct rpc_server* server);
+
+/* threading function prototypes */
+void rpc_server_threads_init(rpc_server* server);
+void new_connection_update(rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H

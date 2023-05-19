@@ -5,6 +5,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 #include <netdb.h>
@@ -12,6 +13,8 @@
 #include "rpc_server.h"
 #include "rpc_utils.h"
 
+
+/* ----------------------------- SERVICE FUNCTIONALITIES ----------------------------- */
 
 /**
  * Server RPC function to serve the find function request from client.
@@ -119,4 +122,67 @@ int rpc_serve_call(struct rpc_server* server) {
     if (err)
         print_error(TITLE, "cannot send the response data to client");
     return err;
+}
+
+
+/* ----------------------------- THREADING FUNCTIONALITIES ----------------------------- */
+
+/* Mutex and thread condition */
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
+_Noreturn void* thread_serve(void* obj);
+
+
+/**
+ * Initialize the server's threads.
+ * @param server the server RPC
+ */
+void rpc_server_threads_init(rpc_server* server) {
+    int POOL_SIZE = 20;
+    server->threads = (pthread_t*) malloc(POOL_SIZE * sizeof(pthread_t));
+    for (int i=0; i < POOL_SIZE; i++)
+        pthread_create(&(server->threads[i]), NULL,
+                       thread_serve, server);
+}
+
+
+/**
+ * Thread handler function. This will make the thread check if there are any clients
+ * un-served and will thus serve them if resources are available. It uses a mutex lock
+ * and a conditional variable to ensure efficient resource usage.
+ * @param obj the server
+ * @return    nothing - the threads are expected to run forever
+ */
+_Noreturn void* thread_serve(void* obj) {
+    rpc_server* server = (rpc_server*) obj;
+    while (1) {
+        // check if any client is not yet served
+        pthread_mutex_lock(&mutex);
+        pthread_cond_wait(&condition, &mutex);
+        int cond = (server->num_connections > 0);
+        if (cond)  (server->num_connections)--;
+        pthread_mutex_unlock(&mutex);
+
+        // serve the client
+        if (cond) {
+            int flag = ERROR;
+            while (rpc_receive_int(server->conn_fd, &flag) == 0) {
+                if      (flag == FIND_SERVICE) rpc_serve_find(server);
+                else if (flag == CALL_SERVICE) rpc_serve_call(server);
+                else    break;
+            }
+        }
+    }
+}
+
+/**
+ * Critical region to update a new connection from server, viz. when a new client
+ * has successfully connected to server.
+ * @param server
+ */
+void new_connection_update(rpc_server* server) {
+    pthread_mutex_lock(&mutex);
+    (server->num_connections)++;
+    pthread_cond_signal(&condition);
+    pthread_mutex_unlock(&mutex);
 }

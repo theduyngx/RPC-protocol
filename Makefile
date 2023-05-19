@@ -172,4 +172,4 @@ shortcut:
 	make clean
 	make
 	make debug
-	make block1-srv
+	make block2-srv
