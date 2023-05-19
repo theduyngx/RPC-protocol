@@ -37,8 +37,8 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     }
 
     // receive the function's name from client
-    char name_buffer[name_len+1];
-    memset(name_buffer, '\0', sizeof(char) * name_len+1);
+    char* name_buffer = (char*) malloc(name_len+1);
+    memset(name_buffer, 0, name_len+1);
     ssize_t n = recv(conn_fd, name_buffer, name_len, 0);
     if (n < 0) {
         print_error(TITLE, "cannot receive client's requested function name");
@@ -51,6 +51,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     // check if the function of requested name exists with flag verification
     int flag = ERROR;
     function_t* handler = search(server->functions, name_buffer);
+    free(name_buffer);
     if (handler == NULL)
         print_error(TITLE, "cannot find requested function's name");
     else
