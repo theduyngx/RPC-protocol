@@ -186,18 +186,7 @@ void* package_handler(void* package_obj) {
 
         // serve the client
         int flag = ERROR;
-
-        /// PROBLEM IS HERE:
-        /// WE HAVE TO SIGNAL THE THREAD FOR IT TO KNOW WHEN CLIENT HAS STOPPED CONNECTION
-        // here's how we can do it:
-        // basically: make thread function-specific instead of client-specific
-        // that way, the thread will simply be killed off once it finishes the function
-        // execution
-
-        // this is because with this, we won't have to while loop like this anymore and so,
-        // we will be able to kill the threads deterministically
-
-        while (rpc_receive_flag(thread_fd, &flag) == 0) {
+        while (rpc_receive_request(thread_fd, &flag) == 0) {
             if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
             else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
             else    break;

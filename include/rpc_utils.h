@@ -11,7 +11,8 @@
 #include <stdint.h>
 #include "rpc.h"
 
-#define ERROR (int) (-1)
+#define ERROR      (int) (-1)
+#define OVERLENGTH (int) (-2)
 
 
 /* hash and debug */
@@ -25,7 +26,7 @@ int rpc_receive_uint(int socket, uint64_t* ret);
 /* send/receive signed integer */
 int rpc_send_int(int socket, int val);
 int rpc_receive_int(int socket, int* ret);
-int rpc_receive_flag(int socket, int* ret);
+int rpc_receive_request(int socket, int* ret);
 
 /* send/receive rpc data */
 int rpc_send_payload(int socket, rpc_data* payload);

@@ -12,8 +12,8 @@
 #include <pthread.h>
 #include "function_queue.h"
 
-#define FIND_SERVICE (int) 0
-#define CALL_SERVICE (int) 1
+#define FIND_SERVICE (int) 0    // flag from client requesting find service
+#define CALL_SERVICE (int) 1    // flag from client requesting call service
 
 
 /* RPC server structure */

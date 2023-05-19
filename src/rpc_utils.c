@@ -110,15 +110,19 @@ int rpc_receive_int(int socket, int* ret) {
 }
 
 
-int rpc_receive_flag(int socket, int* ret) {
+/**
+ * Function to receive request from client. It will return ERROR (or -1) if client does
+ * not send a request, effectively stopping the connection.
+ * @param socket the socket connected to client
+ * @param ret    the client's request flag
+ * @return       0 on success, -1 on error
+ */
+int rpc_receive_request(int socket, int* ret) {
     uint64_t ret_ntw;
     ssize_t n = recv(socket, &ret_ntw, sizeof ret_ntw, 0);
     if (n <= 0) return -1;
     uint64_t ret64 = ntohll(ret_ntw);
-
-    // negative integer conversion
-    if (ret64 >= INT_MAX)
-        *ret = -(int) (-ret64);
+    if (ret64 >= INT_MAX) *ret = -(int) (-ret64);
     else *ret = (int) ret64;
     return 0;
 }
@@ -193,15 +197,11 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     // for data2 - due to it being size_t, it may exceed pivot
-    size_t data_curr = data2_len;
-    int num_exceed = 0;
-    while (data_curr > pivot) {
-        num_exceed++;
-        data_curr -= pivot;
-    }
+    uint64_t num_exceed = data2_len / pivot;
+    size_t remainder = data2_len % pivot;
 
     // first, we send the number of times to send data2_len
-    err = rpc_send_int(socket, num_exceed);
+    err = rpc_send_uint(socket, num_exceed);
     if (err) {
         print_error(TITLE,
                     "cannot send to other end the number of times required to send data2_len");
@@ -209,7 +209,7 @@ int rpc_send_payload(int socket, rpc_data* payload) {
     }
 
     // then, the remainder
-    err = rpc_send_uint(socket, data_curr);
+    err = rpc_send_uint(socket, remainder);
     if (err) {
         print_error(TITLE, "cannot send data2_len remainder to other end");
         return ERROR;
@@ -221,9 +221,11 @@ int rpc_send_payload(int socket, rpc_data* payload) {
         print_error(TITLE, "cannot receive other end's file limit flag");
         return ERROR;
     }
-    if (flag == ERROR) {
+    // OVERLENGTH ERROR
+    if (flag < 0) {
         print_error(TITLE, "failed verification flag, payload exceeded its limit size");
-        return ERROR;
+        fprintf(stderr, "Overlength error\n");
+        return OVERLENGTH;
     }
 
     // send data2 if flag verifies data2 is not NULL
@@ -300,8 +302,8 @@ rpc_data* rpc_receive_payload(int socket) {
     }
 
     // receive number of times taken to send data2_len
-    int num_send;
-    err = rpc_receive_int(socket, &num_send);
+    uint64_t num_send;
+    err = rpc_receive_uint(socket, &num_send);
     if (err) {
         print_error(TITLE, "cannot receive from other end the number of times "
                            "required to send data2_len");
@@ -320,10 +322,10 @@ rpc_data* rpc_receive_payload(int socket) {
     uint64_t intervals = SIZE_MAX / pivot;
     // so, we compare num_send against number of times taken for pivot to reach SIZE_MAX
     if (intervals < num_send)
-        flag = ERROR;
+        flag = OVERLENGTH;
     else if (intervals == num_send) {
         uint64_t interval_remainder = SIZE_MAX % pivot;
-        if (interval_remainder <= remainder) flag = ERROR;
+        if (interval_remainder <= remainder) flag = OVERLENGTH;
     }
 
     // verify data2 size does not exceed limit
@@ -332,8 +334,11 @@ rpc_data* rpc_receive_payload(int socket) {
         print_error(TITLE, "cannot send limit flag to other end");
         return NULL;
     }
-    if (flag == ERROR)
+    // OVERLENGTH ERROR
+    if (flag == OVERLENGTH) {
+        fprintf(stderr, "Overlength error\n");
         return NULL;
+    }
 
     // otherwise, receive the package
     size_t data2_len = pivot * num_send + remainder;
