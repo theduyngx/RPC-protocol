@@ -119,6 +119,7 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
         return ERROR;
     rpc_handler handler = function->f_handler;
     rpc_data* response = handler(payload);
+    rpc_data_free(payload);
 
     // send the response to client
     err = rpc_send_payload(conn_fd, response);
