@@ -147,13 +147,22 @@ void* package_handler(void* package_obj);
  * Initialize the thread package.
  * @param server the server RPC
  */
-void package_init(rpc_server* server) {
-    pthread_t thread;
+int package_init(rpc_server* server) {
+    // create package
     package_t* package = (package_t*) malloc(sizeof(package_t));
+    assert(package && server);
     package->server = server;
     package->thread_fd = server->conn_fd;
-    pthread_create(&thread, NULL, package_handler, package);
-    pthread_detach(thread);
+
+    // create thread
+    int err;
+    pthread_t thread;
+    err  = pthread_create(&thread, NULL, package_handler, package);
+    err += pthread_detach(thread);
+    free(package);
+    if (err < 0)
+        print_error("package_init", "cannot create/detach thread");
+    return err;
 }
 
 
@@ -165,15 +174,18 @@ void package_init(rpc_server* server) {
  */
 void* package_handler(void* package_obj) {
     package_t* package = (package_t*) package_obj;
-    rpc_server* server = package->server;
-    int thread_fd = package->thread_fd;
-    int flag = ERROR;
-    while (rpc_receive_int(thread_fd, &flag) == 0) {
-        if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
-        else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
-        else    break;
+    if (package_obj) {
+        rpc_server *server = package->server;
+        int thread_fd = package->thread_fd;
+        int flag = ERROR;
+        while (rpc_receive_int(thread_fd, &flag) == 0) {
+            if (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
+            else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
+            else break;
+        }
+        free(package_obj);
+        package_obj = NULL;
     }
-    if (package_obj) free(package_obj);
     return NULL;
 }
 

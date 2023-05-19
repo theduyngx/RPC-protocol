@@ -34,7 +34,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd);
 int rpc_serve_call(struct rpc_server* server, int conn_fd);
 
 /* simple multi-threading function prototypes */
-void package_init(rpc_server* server);
+int package_init(rpc_server* server);
 
 /* thread pool architecture function prototypes */
 __attribute__((unused)) void rpc_server_threads_init(rpc_server* server);

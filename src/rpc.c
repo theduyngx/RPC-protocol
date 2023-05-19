@@ -143,6 +143,7 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
  */
 _Noreturn void rpc_serve_all(rpc_server* server) {
     char* TITLE = "rpc-server: rpc_serve_all";
+    int err;
     while (1) {
 
         // accept connection and update connection socket for server RPC
@@ -157,7 +158,8 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
         server->conn_fd = conn_fd;
 
         // enqueue to let the thread handles the connection
-        package_init(server);
+        err = package_init(server);
+        if (err) print_error(TITLE, "cannot initialize package properly");
     }
 }
 
