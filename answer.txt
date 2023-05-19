@@ -1,0 +1,70 @@
+Student    : The Duy Nguyen
+Login ID   : theduyn
+Student ID : 1100548
+
+---------
+Q1:
+The server perhaps should not accept calls from everyone. This is primarily due to security reasons.
+Since the transport layer protocol used - TCP - does not provide any data encryption, if a client
+asks to receive server's sensitive data, it may be sniffed. So the subset of clients should be those
+who understand the security risks and what data is considered sensitive on the server.
+
+
+---------
+Q2:
+It may be either, but it should be the framework's. This is because authentication can be viewed in a
+request-response way (meaning a client requests to authenticate, the server responds with the required
+information for authentication, and the client receives that and accordingly responds). This is, in
+essence, what our RPC is doing. So it already provides with a convenient interface for the framework
+to deploy authentication. It should be the framework's responsibility to actualize it using RPC.
+
+
+---------
+Q3:
+TCP was the used protocol. There are several strengths in using TCP:
+1. It is industry standard, meaning it is very practical.
+2. It is reliable, since it deals well with packet loss, error recovery, among other issues when
+   transmitting packets over the network.
+3. It is stream-oriented, meaning TCP will segment the data however is required for the users.
+
+In contrast to UDP, however, while the mentioned points are its strengths, UDP is more advantageous in:
+1. Being more lightweight (lighter header size, minimal error recovery check, etc.) meaning less overhead
+   and faster speed.
+2. Being connectionless, meaning it is not restricted to a pair of client and user, and 1 end system can
+   therefore send lots of packets to others.
+3. Checking data integrity - since it is message-stream, not byte-stream, which ensures the separation
+   and order of the data itself.
+That said, TCP, as mentioned above, has the strengths that UDP does not have which is deemed important
+for the nature of the client-server model in the project.
+
+Compare to QUIC, on the other hand, TCP pales in comparison.
+1. QUIC ensures security with encryption and other security measures.
+2. QUIC is faster than TCP, as its aim is to reduce latency. Specifically, it reduces the handshake
+   protocol in TCP, and among other techniques.
+3. It utilizes multiplexing with push.
+As of now, QUIC has not been as widely used as TCP. For the purpose of industry standard with widespread
+and well-known implementations, I have chosen TCP as the protocol.
+
+
+---------
+Q4:
+The server's listening socket should be created in rpc_server_init.
+The server's client connection socket should be created in rpc_serve_all. Unlike the listen socket, once
+serve all is called, it should only care about accepting connections from clients and respond to them.
+
+
+---------
+Q5:
+rpc_client should be dynamically allocated because clients will almost always inevitably close their
+connection, and that should be effectively freed from the program.
+rpc_server in theory should be statically allocated because it is "always on". However, dynamically
+allocated server allows for convenient argument passing in functions which may also be beneficial. In the
+end, either way should be fine for rpc_server.
+
+
+---------
+Q6:
+Regardless of whether which end system uses which byte ordering, all it should be concerned about is
+convert its byte ordering to the network's when sending over the network, and convert the byte ordering
+of the data received on the network back to its ordering. Therefore, in theory, this should not pose a
+significant issue.
