@@ -30,9 +30,11 @@
  * @return     NULL if unsuccessful, or the server RPC if otherwise
  */
 rpc_server* rpc_init_server(int port) {
-    char* TITLE     = "rpc-server: rpc_init_server";
+    char* TITLE = "rpc-server: rpc_init_server";
+    int err;
     int QUEUE_SIZE  = 20;
     int POOL_SIZE   = 20;
+    int JOIN_SIZE   = 15;
     int TIMEOUT_SEC = 5;
 
     // create listen socket
@@ -48,8 +50,29 @@ rpc_server* rpc_init_server(int port) {
     server->listen_fd       = listen_fd;
     server->functions       = queue_init();
     server->pool_size       = POOL_SIZE;
+    server->join_threshold  = JOIN_SIZE;
+    server->num_connected   = 0;
     server->num_connections = 0;
     assert(server->listen_fd && server->functions);
+
+    // validate join threshold
+    err = (server->join_threshold >= server->pool_size);
+    if (err) {
+        print_error(TITLE, "join threshold exceeds pool size");
+        free(server->functions);
+        free(server);
+        return NULL;
+    }
+
+    // create thread pool
+    err  = rpc_server_threads_init(server);
+    err += threads_detach(server);
+    if (err < 0) {
+        print_error(TITLE, "rpc-server: cannot create / detach thread pool");
+        free(server->functions);
+        free(server);
+        return NULL;
+    }
     return server;
 }
 
@@ -103,9 +126,19 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
         }
         server->accept_fd = accept_fd;
 
-        // enqueue to let the thread handles the connection
-        err = package_init(server);
-        if (err) print_error(TITLE, "cannot initialize package properly");
+        // suspend activity on condition
+        if (server->num_connections >= server->join_threshold) {
+            err = threads_join(server);
+            if (err) {
+                print_error(TITLE, "cannot join thread pool");
+                continue;
+            }
+        }
+
+        // set up new connection
+        err = new_connection_update(server);
+        if (err)
+            print_error(TITLE, "cannot set up new connection");
     }
 }
 
