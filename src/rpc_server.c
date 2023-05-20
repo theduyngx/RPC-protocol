@@ -14,6 +14,84 @@
 #include "rpc_utils.h"
 
 
+/* ----------------------------- INITIALIZATION ----------------------------- */
+
+/**
+ * Create the listen socket for server.
+ * @param port        port number
+ * @param timeout_sec time (in seconds) before timeout for receive/send occurs
+ * @param queue_size  the queue size for accepting clients
+ * @return            -1 on failure, and the listen socket on success
+ */
+int create_listen_socket(int port, int timeout_sec, int queue_size) {
+    char* TITLE = "create_listen_socket";
+    int err;
+
+    // sockets
+    int listen_fd = 0;
+    struct addrinfo hints, *results;
+
+    // timeout
+    struct timeval timeout = {
+            .tv_sec  = timeout_sec,
+            .tv_usec = 0
+    };
+
+    // set all fields in hints to 0, then set specific fields to correspond to IPv6 server
+    memset(&hints, 0, sizeof hints);
+    hints.ai_family = AF_INET6;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags = AI_PASSIVE;
+
+    // convert port number and allow all access
+    char port_str[10];
+    sprintf(port_str, "%d", port);
+    err = getaddrinfo(NULL, port_str, &hints, &results);
+    if (err != 0) {
+        print_error(TITLE, "getaddrinfo unsuccessful");
+        return ERROR;
+    }
+
+    // get the appropriate address to create the listen file descriptor
+    struct addrinfo *result = results;
+    for (; result != NULL; result = result->ai_next) {
+        if (result->ai_family == AF_INET6 &&
+            (listen_fd = socket(result->ai_family,
+                                result->ai_socktype,
+                                result->ai_protocol)
+            ) >= 0
+                ) break;
+    }
+    if (listen_fd < 0) {
+        print_error(TITLE, "listen socket cannot be found");
+        return ERROR;
+    }
+
+    // set options to reusable address
+    int re = 1;
+    err  = setsockopt(listen_fd, SOL_SOCKET, SO_REUSEADDR,
+                      &re, sizeof re);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_RCVTIMEO,
+                      &timeout, sizeof timeout);
+    err += setsockopt(listen_fd, SOL_SOCKET, SO_SNDTIMEO,
+                      &timeout, sizeof timeout);
+    if (err < 0) {
+        print_error(TITLE, "setsockopt unsuccessful");
+        return ERROR;
+    }
+
+    // bind to the appropriate address and listen
+    err = bind(listen_fd, result->ai_addr, result->ai_addrlen);
+    if (err < 0) {
+        print_error(TITLE, "listen socket cannot be bound");
+        return ERROR;
+    }
+    freeaddrinfo(results);
+    listen(listen_fd, queue_size);
+    return listen_fd;
+}
+
+
 /* ----------------------------- SERVICE FUNCTIONALITIES ----------------------------- */
 
 /**

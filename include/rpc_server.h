@@ -8,7 +8,6 @@
 #ifndef PROJECT2_RPC_SERVER_H
 #define PROJECT2_RPC_SERVER_H
 
-#include <unistd.h>
 #include <pthread.h>
 #include "function_queue.h"
 
@@ -26,12 +25,16 @@ struct rpc_server {
     pthread_t* threads;
 };
 
-/* Thread package */
-typedef struct thread_package package_t;
+/* listen socket creation */
+int create_listen_socket(int port, int timeout_sec, int queue_size);
 
 /* function prototypes to serve clients */
 function_t* rpc_serve_find(struct rpc_server* server, int conn_fd);
 int rpc_serve_call(struct rpc_server* server, int conn_fd);
+
+
+/* Thread package */
+typedef struct thread_package package_t;
 
 /* simple multi-threading function prototypes */
 int package_init(rpc_server* server);
