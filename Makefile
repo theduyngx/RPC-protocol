@@ -9,7 +9,6 @@ GDB     = -g
 CFLAGS  = -Wall
 CFLAGS += $(INC)
 VALGRND = valgrind --leak-check=full --track-origins=yes
-#VALGRND =
 
 # client-server executable tags
 SRV     = rpc-server

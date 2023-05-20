@@ -9,23 +9,29 @@ PART 3.3
 Q1:
 The server perhaps should not accept calls from everyone. This is primarily due to security reasons.
 Since the transport layer protocol used - TCP - does not provide any data encryption, if a client
-asks to receive server's sensitive data, it may be sniffed. So the subset of clients should be those
-who understand the security risks and what data is considered sensitive on the server.
+asks to receive server's sensitive data or sends their sensitive data to the server, it may easily be
+sniffed. So the subset of clients should be those who understand the security risks and what data is
+considered sensitive on their end as well as on the server.
 
 
 ---------
 Q2:
-It may be either, but it should be the framework's. This is because authentication can be viewed in a
-request-response way (meaning a client requests to authenticate, the server responds with the required
-information for authentication, and the client receives that and accordingly responds). This is, in
-essence, what our RPC is doing. So it already provides with a convenient interface for the framework
-to deploy authentication. It should be the framework's responsibility to actualize it using RPC.
+Authentication should be the framework's responsibility. This is because authentication can be viewed
+in a request-response way (meaning a client requests to authenticate, the server responds with the
+required information for authentication, and the client receives that and accordingly responds). This
+is, in essence, what our RPC is doing. So it already provides with a convenient interface for the
+framework to deploy authentication. It should be the framework's responsibility to actualize it using
+RPC.
+
+That said, it is also the RPC's responsibility to ensure that the framework's authentication can be
+actualized with the required security. Perhaps, it may be better if RPC uses TCP on SSL or other means
+to support the framework.
 
 
 ---------
 Q3:
 TCP was the used protocol. There are several strengths in using TCP:
-1. It is industry standard, meaning it is very practical.
+1. It is industry standard, and likewise very practical.
 2. It is reliable, since it deals well with packet loss, error recovery, among other issues when
    transmitting packets over the network.
 3. It is stream-oriented, meaning TCP will segment the data however is required for the users.
@@ -35,12 +41,11 @@ In contrast to UDP, however, while the mentioned points are its strengths, UDP i
    overhead and faster in speed.
 2. Being connectionless, meaning it is not restricted to a pair of client and user, and one end system
    can therefore send lots of packets to others.
-3. Checking data integrity - since it is message-stream, not byte-stream, which ensures the separation
-   and order of the data itself.
-That said, TCP, as mentioned above, has the strengths that UDP does not have, all of which are deemed
-to be important for the nature of the client-server model in the project.
+3. Multiplexing - data immediacy
+That said, the strengths of TCP mentioned above is what UDP does not have, and all of which are deemed
+of great importance for the nature of the client-server model in the project.
 
-Compare to QUIC, on the other hand, TCP pales in comparison.
+Compare to QUIC, on the other hand, TCP may pale in comparison.
 1. QUIC ensures security with encryption and other security measures.
 2. QUIC is faster than TCP, as its aim is to reduce latency. Specifically, it reduces the handshake
    protocol in TCP, and among other techniques.
@@ -51,29 +56,31 @@ standard with widespread and well-known implementations, I have chosen TCP as th
 
 ---------
 Q4:
-The server's listening socket should be created in rpc_server_init.
-The server's client connection socket should be created in rpc_serve_all. Unlike listen socket, once
-serve all is called, it should only care about accepting connections from clients and respond to them.
+The server's listen socket should be created in rpc_server_init.
+The server's client accept socket should be created in rpc_serve_all. Unlike listen socket, once serve
+all is called, it should only care about accepting connections from clients and respond to them.
+The client's connect socket should be created in rpc_client_init to establish that it either has or
+has not been able to connect to a server. Subsequently, client should only concern about requests.
 
 
 ---------
 Q5:
-rpc_client should be dynamically allocated because of a number of reasons:
-    -  The number of clients cannot be pre-determined
-    -  The clients must be able to close their connections and have the represented structure memory
-       deallocated to give space to other things. With static memory, this won't be possible.
+rpc_client should be dynamically allocated primarily because they must be able to close their
+connections and have the represented structure memory deallocated to give space to other things. With
+static memory, this won't be possible.
+
 rpc_server in theory could be statically allocated since it is "always on". However, dynamic allocation
-like with clients allows for more convenient argument passing and type returning in functions which may
-be beneficial. It is safe to assume that several fields related to the server may be used by various
-functions. As such, it is perhaps more practical to dynamically allocate the rpc_server.
+allows for more convenient argument passing and type returning in functions which may be beneficial. It
+is safe to assume that several fields related to the server may be used by various functions. As such,
+it is perhaps more practical to dynamically allocate the rpc_server.
 
 
 ---------
 Q6:
 Regardless of whether which end system uses which byte ordering, all it should be concerned about is
-convert its byte ordering to the network's when sending over the network, and convert the byte ordering
-of the data received on the network back to its ordering. Therefore, in theory, this should not pose a
-significant issue.
+converting its byte ordering to the network's when sending over the network, and convert the byte
+ordering of the data received on the network back to its ordering. Therefore, in theory, this should
+not pose a significant issue if we do this simple system-to-network and network-to-system conversion.
 
 
 =======================================
@@ -93,7 +100,7 @@ The RCP protocol uses TCP, mainly for reliability. This ensures that the data pa
 transmitted as possible. Specifically, TCP ensures that IP layer packet loss and duplication are
 appropriately handled. Moreover, it also handles the restriction of maximum allowed size of IP packets
 due to its stream-oriented nature. This is because TCP will already have fragmented large packets into
-smaller streams of bytes to not exceed Maximum Transmission Unit.
+smaller streams of bytes so as to not exceed Maximum Transmission Unit.
 
 It is also important to note that the TCP protocol of our RPC protocol runs on IPv6.
 
