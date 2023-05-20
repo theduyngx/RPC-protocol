@@ -20,7 +20,9 @@ struct rpc_server {
     int listen_fd;
     int accept_fd;
     int num_connections;
+    int num_connected;
     int pool_size;
+    int join_threshold;
     queue_f* functions;
     pthread_t* threads;
 };
@@ -37,14 +39,13 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd);
 typedef struct thread_package package_t;
 
 /* simple multi-threading function prototypes */
+__attribute__((unused))
 int package_init(rpc_server* server);
 
 /* thread pool architecture function prototypes */
-__attribute__((unused))
-void rpc_server_threads_init(rpc_server* server);
-__attribute__((unused))
-void new_connection_update(rpc_server* server);
-__attribute__((unused))
-void threads_detach(rpc_server* server);
+int rpc_server_threads_init(rpc_server* server);
+int new_connection_update(rpc_server* server);
+int threads_detach(rpc_server* server);
+int threads_join(rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H

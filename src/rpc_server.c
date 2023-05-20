@@ -212,7 +212,9 @@ int rpc_serve_call(struct rpc_server* server, int accept_fd) {
 
 /* ----------------------------- NORMAL THREADING ----------------------------- */
 
-/* Thread package, which includes needed data to pass in thread package handler */
+/* Thread package, which includes needed data
+ * to pass in thread package handler
+ */
 struct thread_package {
     int thread_fd;
     rpc_server* server;
@@ -225,6 +227,7 @@ void* package_handler(void* package_obj);
  * Initialize the thread package.
  * @param server the server RPC
  */
+__attribute__((unused))
 int package_init(rpc_server* server) {
     // create package
     package_t* package = (package_t*) malloc(sizeof(package_t));
@@ -286,15 +289,17 @@ _Noreturn void* thread_serve(void* obj);
 /**
  * Initialize the server's threads.
  * @param server the server RPC
+ * @return       0 on success, and otherwise on error
  */
- __attribute__((unused))
-void rpc_server_threads_init(rpc_server* server) {
+int rpc_server_threads_init(rpc_server* server) {
+    int err = 0;
     int pool_size = server->pool_size;
     server->threads = (pthread_t*) malloc(pool_size * sizeof(pthread_t));
-    for (int i=0; i < pool_size; i++) {
-        pthread_create(&(server->threads[i]), NULL,
-                       thread_serve, server);
-    }
+    assert(server->threads);
+    for (int i=0; i < pool_size; i++)
+        err += pthread_create(&(server->threads[i]), NULL,
+                              thread_serve, server);
+    return err;
 }
 
 
@@ -313,9 +318,9 @@ _Noreturn void* thread_serve(void* server_obj) {
         // check if any client is not yet served
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&condition, &mutex);
-        int cond = (server->num_connections > 0);
+        int cond = (server->num_connected > 0);
         if (cond) {
-            (server->num_connections)--;
+            (server->num_connected)--;
             thread_fd = server->accept_fd;
         }
         pthread_mutex_unlock(&mutex);
@@ -323,11 +328,12 @@ _Noreturn void* thread_serve(void* server_obj) {
         // serve the client
         if (cond) {
             int flag = ERROR;
-            while (rpc_receive_int(thread_fd, &flag) == 0) {
+            while (rpc_receive_request(thread_fd, &flag) == 0) {
                 if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
                 else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
                 else    break;
             }
+            (server->num_connections)--;
         }
     }
 }
@@ -337,12 +343,14 @@ _Noreturn void* thread_serve(void* server_obj) {
  * has successfully connected to server.
  * @param server
  */
-__attribute__((unused))
-void new_connection_update(rpc_server* server) {
-    pthread_mutex_lock(&mutex);
+int new_connection_update(rpc_server* server) {
+    int err = 0;
+    err += pthread_mutex_lock(&mutex);
     (server->num_connections)++;
-    pthread_cond_signal(&condition);
-    pthread_mutex_unlock(&mutex);
+    (server->num_connected)++;
+    err += pthread_cond_signal(&condition);
+    err += pthread_mutex_unlock(&mutex);
+    return err;
 }
 
 
@@ -350,10 +358,24 @@ void new_connection_update(rpc_server* server) {
  * Joining server's threads. This will be called periodically.
  * @param server
  */
-__attribute__((unused))
-void threads_detach(rpc_server* server) {
+int threads_detach(rpc_server* server) {
+    int err = 0;
     for (int i=0; i < server->num_connections; i++) {
         pthread_t thread = server->threads[i];
-        pthread_detach(thread);
+        err += pthread_detach(thread);
     }
+    return err;
+}
+
+/**
+ * Joining server's threads. This will be called periodically.
+ * @param server
+ */
+int threads_join(rpc_server* server) {
+    int err = 0;
+    for (int i=0; i < server->num_connections; i++) {
+        pthread_t thread = server->threads[i];
+        err += pthread_join(thread, NULL);
+    }
+    return err;
 }
