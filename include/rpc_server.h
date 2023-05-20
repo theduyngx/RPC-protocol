@@ -18,7 +18,7 @@
 /* RPC server structure */
 struct rpc_server {
     int listen_fd;
-    int conn_fd;
+    int accept_fd;
     int num_connections;
     int pool_size;
     queue_f* functions;

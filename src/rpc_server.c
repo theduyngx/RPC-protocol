@@ -97,17 +97,17 @@ int create_listen_socket(int port, int timeout_sec, int queue_size) {
 /**
  * Server RPC function to serve the find function request from client.
  * @param server  the server RPC
- * @param conn_fd the connection socket to a specific client
+ * @param accept_fd the connection socket to a specific client
  * @return        NULL if no function is found or an error occurs,
  *                or the function structure to serve the call later
  */
-function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
+function_t* rpc_serve_find(struct rpc_server* server, int accept_fd) {
     char* TITLE = "rpc-server: rpc_serve_all";
 
     // receive the name's length from client
     int err;
     uint64_t name_len;
-    err = rpc_receive_uint(conn_fd, &name_len);
+    err = rpc_receive_uint(accept_fd, &name_len);
     if (err) {
         print_error(TITLE, "cannot receive the length of client's "
                            "requested function's name");
@@ -117,7 +117,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     // receive the function's name from client
     char name_buffer[name_len+1];
     memset(name_buffer, 0, name_len+1);
-    ssize_t n = recv(conn_fd, name_buffer, name_len, 0);
+    ssize_t n = recv(accept_fd, name_buffer, name_len, 0);
     if (n < 0) {
         print_error(TITLE, "cannot receive client's requested function name");
         return NULL;
@@ -135,7 +135,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
         flag = 0;
 
     // send flag to client, ERROR (or -1) means failure
-    err = rpc_send_int(conn_fd, flag);
+    err = rpc_send_int(accept_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send function's flag to client");
         return NULL;
@@ -144,7 +144,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
     // on success
     if (flag == 0) {
         // finally, we send the function's id to the client
-        err = rpc_send_uint(conn_fd, handler->id);
+        err = rpc_send_uint(accept_fd, handler->id);
         if (err) {
             print_error(TITLE, "cannot send function's id to client");
             return NULL;
@@ -158,16 +158,16 @@ function_t* rpc_serve_find(struct rpc_server* server, int conn_fd) {
  * Server RPC function to serve the call request from client. It will first try to receive
  * from the client the appropriate RPC data packet, and call the handler accordingly.
  * @param server   the server RPC
- * @param conn_fd  the connection socket to a specific client
+ * @param accept_fd  the connection socket to a specific client
  * @return         0 if successful, and otherwise if not
  */
-int rpc_serve_call(struct rpc_server* server, int conn_fd) {
+int rpc_serve_call(struct rpc_server* server, int accept_fd) {
     char* TITLE = "server: rpc_serve_all";
 
     // read the function's id to get the function for call
     int err;
     uint64_t id;
-    err = rpc_receive_uint(conn_fd, &id);
+    err = rpc_receive_uint(accept_fd, &id);
     if (err) {
         print_error(TITLE, "cannot receive function's id verification from client");
         return ERROR;
@@ -176,7 +176,7 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
     // send verification flag to client
     function_t* function = search_id(server->functions, id);
     int flag = -(function == NULL);
-    err = rpc_send_int(conn_fd, flag);
+    err = rpc_send_int(accept_fd, flag);
     if (err) {
         print_error(TITLE, "cannot send verification flag to client");
         return ERROR;
@@ -188,7 +188,7 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
     }
 
     // read the function's payload
-    rpc_data* payload = rpc_receive_payload(conn_fd);
+    rpc_data* payload = rpc_receive_payload(accept_fd);
     if (payload == NULL)
         return ERROR;
 
@@ -202,7 +202,7 @@ int rpc_serve_call(struct rpc_server* server, int conn_fd) {
     rpc_data_free(payload);
 
     // send the response to client
-    err = rpc_send_payload(conn_fd, response);
+    err = rpc_send_payload(accept_fd, response);
     rpc_data_free(response);
     if (err)
         print_error(TITLE, "cannot send the response data to client");
@@ -230,7 +230,7 @@ int package_init(rpc_server* server) {
     package_t* package = (package_t*) malloc(sizeof(package_t));
     assert(package && server);
     package->server = server;
-    package->thread_fd = server->conn_fd;
+    package->thread_fd = server->accept_fd;
 
     // create thread
     int err;
@@ -316,7 +316,7 @@ _Noreturn void* thread_serve(void* server_obj) {
         int cond = (server->num_connections > 0);
         if (cond) {
             (server->num_connections)--;
-            thread_fd = server->conn_fd;
+            thread_fd = server->accept_fd;
         }
         pthread_mutex_unlock(&mutex);
 
