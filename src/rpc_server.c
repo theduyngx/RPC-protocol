@@ -2,6 +2,8 @@
  * Author  : The Duy Nguyen - 1100548
  * File    : rpc_server.c
  * Purpose : Server RPC functions specifically related to serving the client's requests.
+ *
+ * The file also supports multi-threading for server to handle multiple clients at once.
  */
 
 #include <stdio.h>
@@ -11,7 +13,6 @@
 #include <netdb.h>
 
 #include "rpc_server.h"
-#include "client_queue.h"
 #include "rpc_utils.h"
 
 
@@ -211,7 +212,7 @@ int rpc_serve_call(struct rpc_server* server, int accept_fd) {
 }
 
 
-/* ----------------------------- NORMAL THREADING ----------------------------- */
+/* ----------------------------- MULTI-THREADING ----------------------------- */
 
 /* Thread package, which includes needed data
  * to pass in thread package handler
@@ -228,7 +229,6 @@ void* package_handler(void* package_obj);
  * Initialize the thread package.
  * @param server the server RPC
  */
-__attribute__((unused))
 int package_init(rpc_server* server) {
     // create package
     package_t* package = (package_t*) malloc(sizeof(package_t));
@@ -246,7 +246,7 @@ int package_init(rpc_server* server) {
         pthread_cancel(thread);
         print_error("package_init", "cannot create/detach thread");
     }
-    return err;
+    return 0;
 }
 
 
@@ -262,7 +262,7 @@ void* package_handler(void* package_obj) {
 
         // unpacking the package
         rpc_server *server = package->server;
-        int thread_fd = package->thread_fd;
+        int thread_fd      = package->thread_fd;
         free(package_obj);
         package_obj = NULL;
 
@@ -275,73 +275,4 @@ void* package_handler(void* package_obj) {
         }
     }
     return NULL;
-}
-
-
-/* ----------------------------- THREAD POOL ----------------------------- */
-
-/* Mutex and thread condition */
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t condition = PTHREAD_COND_INITIALIZER;
-
-_Noreturn void* thread_serve(void* obj);
-
-
-/**
- * Initialize the server's threads.
- * @param server the server RPC
- * @return       0 on success, and otherwise on error
- */
-int rpc_server_threads_init(rpc_server* server) {
-    int err = 0;
-    int pool_size = server->pool_size;
-    server->threads = (pthread_t*) malloc(pool_size * sizeof(pthread_t));
-    assert(server->threads);
-    for (int i=0; i < pool_size; i++)
-        err += pthread_create(&(server->threads[i]), NULL,
-                              thread_serve, server);
-    return err;
-}
-
-
-/**
- * Thread handler function. This will make the thread check if there are any clients
- * un-served and will thus serve them if resources are available. It uses a mutex lock
- * and a conditional variable to ensure efficient resource usage.
- * @param server_obj the server
- * @return           nothing - the threads are expected to run forever
- */
-_Noreturn void* thread_serve(void* server_obj) {
-    rpc_server* server = (rpc_server*) server_obj;
-    while (1) {
-        // check if any client is not yet served
-        pthread_mutex_lock(&mutex);
-        pthread_cond_wait(&condition, &mutex);
-        int thread_fd = client_dequeue(server->client_conns);
-        pthread_mutex_unlock(&mutex);
-
-        // serve the client
-        if (thread_fd >= 0) {
-            int flag = ERROR;
-            while (rpc_receive_request(thread_fd, &flag) == 0) {
-                if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
-                else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
-                else    break;
-            }
-        }
-    }
-}
-
-/**
- * Critical region to update a new connection from server, viz. when a new client
- * has successfully connected to server.
- * @param server
- */
-int new_connection_update(rpc_server* server) {
-    int err = 0;
-    err += pthread_mutex_lock(&mutex);
-    err += client_enqueue(server->client_conns, server->accept_fd);
-    err += pthread_cond_signal(&condition);
-    err += pthread_mutex_unlock(&mutex);
-    return err;
 }

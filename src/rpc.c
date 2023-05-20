@@ -31,9 +31,7 @@
  */
 rpc_server* rpc_init_server(int port) {
     char* TITLE = "rpc-server: rpc_init_server";
-    int err;
     int QUEUE_SIZE  = 20;
-    int POOL_SIZE   = 20;
     int TIMEOUT_SEC = 5;
 
     // create listen socket
@@ -44,22 +42,11 @@ rpc_server* rpc_init_server(int port) {
     }
 
     // initializing rpc server structure and add its listener
-    struct rpc_server* server = (struct rpc_server*) malloc(sizeof (struct rpc_server));
+    rpc_server* server = (rpc_server*) malloc(sizeof(rpc_server));
     assert(server);
-    server->listen_fd       = listen_fd;
-    server->functions       = function_queue_init();
-    server->pool_size       = POOL_SIZE;
-    server->client_conns    = client_queue_init();
+    server->listen_fd = listen_fd;
+    server->functions = function_queue_init();
     assert(server->listen_fd && server->functions);
-
-    // create thread pool
-    err = rpc_server_threads_init(server);
-    if (err < 0) {
-        print_error(TITLE, "rpc-server: cannot create thread pool");
-        free(server->functions);
-        free(server);
-        return NULL;
-    }
     return server;
 }
 
@@ -101,7 +88,6 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
     char* TITLE = "rpc-server: rpc_serve_all";
     int err;
     while (1) {
-
         // accept connection and update connection socket for server RPC
         struct sockaddr_storage client_addr;
         socklen_t client_addr_size = sizeof client_addr;
@@ -113,10 +99,9 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
         }
         server->accept_fd = accept_fd;
 
-        // set up new connection
-        err = new_connection_update(server);
-        if (err)
-            print_error(TITLE, "cannot set up new connection");
+        // create a new package for a new thread to handle connection
+        err = package_init(server);
+        if (err) print_error(TITLE, "cannot initialize package properly");
     }
 }
 
