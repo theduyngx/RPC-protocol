@@ -2,7 +2,6 @@
 rpc-client
 rpc-server
 rpc
-*.a
 *.o
 
 # CLion
