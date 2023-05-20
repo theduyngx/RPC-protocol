@@ -1,6 +1,9 @@
 /*
  * File    : server.c
  * Purpose : The server API.
+*
+* The provided API is a simple, bare-bone API which is only to demonstrate how the RPC interface
+* functions. Edit the API to however desired, with the RPC interface in mind.
  */
 
 #include <stdio.h>

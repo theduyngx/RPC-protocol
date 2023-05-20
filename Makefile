@@ -123,3 +123,4 @@ shortcut:
 	make clean
 	make
 	make debug
+	clear
