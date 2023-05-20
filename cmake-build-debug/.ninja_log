@@ -1,0 +1,6 @@
+# ninja log v5
+0	35	1684140494147941761	CMakeFiles/project2.dir/rpc.c.o	119edadc7fda6386
+0	27	1684338232122908112	CMakeFiles/project2.dir/server.c.o	361b48ab6a309fc7
+0	27	1684338232122908112	CMakeFiles/project2.dir/client.c.o	cf6cad9607139c11
+31	47	1684137359553981656	project2	57f062ab10940fb8
+1	26	1684140494139941979	CMakeFiles/project2.dir/function_queue.c.o	19b612bc44304560
