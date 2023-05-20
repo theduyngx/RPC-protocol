@@ -1,39 +1,43 @@
 ### ------------------------- FLAGS, OBJECTS AND PATHS ------------------------- ###
 
 # compiler flags# compiler flags
-CC      = cc
-C 	    = -c
-O       = -o
-INC     = -I$(INC_DIR)
-GDB     = -g
-CFLAGS  = -Wall
-CFLAGS += $(INC)
-VALGRND = valgrind --leak-check=full --track-origins=yes
+CC        = cc
+C 	      = -c
+O         = -o
+INC       = -I$(INC_DIR)
+GDB       = -g
+CFLAGS    = -Wall
+CFLAGS   += $(INC)
+VALGRIND  = valgrind --leak-check=full --track-origins=yes
 
 # client-server executable tags
-SRV     = rpc-server
-CLI     = rpc-client
-SRV_C   = server.c
-CLI_C   = client.c
-SRV_DB  = server
-CLI_DB  = client
-SRV_A   = server.a
-CLI_A   = client.a
+SRV_C     = server.c
+CLI_C     = client.c
+SRV_A     = server.a
+CLI_A     = client.a
+SRV       = $(OUT_DIR)rpc-server
+CLI       = $(OUT_DIR)rpc-client
+SRV_DB    = $(OUT_DIR)server
+CLI_DB    = $(OUT_DIR)client
 
 # paths
-CLI_SRV = client-server/
-SRC_DIR = src/
-INC_DIR = include/
-OUT_DIR = out
-CASES   = cases/
+CS_DIR    = client-server/
+SRC_DIR   = src/
+INC_DIR   = include/
+OUT_DIR   = out/
+CASES     = cases/
 
 # object flags
-RPC_SYS_A = rpc.a
-SRC_OBJ = $(patsubst $(SRC_DIR)%.c, $(OUT_DIR)/%.o, $(wildcard $(SRC_DIR)*.c))
-CLI_IN  = client.in
-SRV_IN  = server.in
-CLI_OUT = client.out
-SRV_OUT = server.out
+SRC_OBJ   = $(patsubst $(SRC_DIR)%.c, $(OUT_DIR)%.o, $(wildcard $(SRC_DIR)*.c))
+CLI_IN    = client.in
+CLI1_IN   = client1.in
+CLI2_IN   = client2.in
+SRV_IN    = server.in
+CLI_OUT   = client.out
+SRV_OUT   = server.out
+CLI1_OUT  = client1.out
+CLI2_OUT  = client2.out
+RPC_SYS_A = $(OUT_DIR)rpc.a
 
 
 
@@ -43,19 +47,19 @@ SRV_OUT = server.out
 all: $(RPC_SYS_A) $(SRV) $(CLI)
 
 # client-server executables
-$(SRV): $(SRV_C)
+$(SRV): $(CS_DIR)$(SRV_C)
 	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS_A) $(GDB)
 
-$(CLI): $(CLI_C)
+$(CLI): $(CS_DIR)$(CLI_C)
 	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS_A) $(GDB)
 
 
 # object files
-$(OUT_DIR)/%.o: $(SRC_DIR)%.c $(INC_DIR)%.h | object
+$(OUT_DIR)%.o: $(SRC_DIR)%.c $(INC_DIR)%.h
 	$(CC) $(CFLAGS) -c -o $@ $< $(GDB)
 
 object:
-	mkdir $(OUT_DIR)
+	mkdir -p $(OUT_DIR:/=)
 
 
 # permitting executable
@@ -73,93 +77,49 @@ $(RPC_SYS_A): object | $(SRC_OBJ)
 
 # clean
 clean:
-	rm -f $(SRV) $(CLI) $(SRV_DB) $(CLI_DB) $(SRC_DIR)*.o *.o *.out *.a
+	rm -f $(SRV) $(CLI) $(SRV_DB) $(CLI_DB) *.o *.a
 	rm -f -r $(OUT_DIR)
 
 
 
 ### ------------------------- DEBUGGING MODE ------------------------- ###
 
-# all executables
+# all debug executables
 debug: $(SRV_DB) $(CLI_DB)
 
-# client-server executables
-$(SRV_DB): $(CLI_SRV)$(SRV_A)
+# client-server libraries
+$(SRV_DB): $(CS_DIR)$(SRV_A)
 	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS_A) $(GDB)
 
-$(CLI_DB): $(CLI_SRV)$(CLI_A)
+$(CLI_DB): $(CS_DIR)$(CLI_A)
 	$(CC) $(CFLAGS) $< $(O) $@ $(RPC_SYS_A) $(GDB)
 
+# debugging test cases
+%-srv:
+	./$(SRV_DB) < $(CASES)$*/$(SRV_IN)
+%-cli:
+	./$(CLI_DB) < $(CASES)$*/$(CLI_IN)
+%-cli1:
+	./$(CLI_DB) < $(CASES)$*/$(CLI1_IN)
+%-cli2:
+	./$(CLI_DB) < $(CASES)$*/$(CLI2_IN)
 
+# check diff
+%-diff-srv:
+	make $*-srv > $(OUT_DIR)$(SRV_OUT)
+	diff $(OUT_DIR)$(SRV_OUT) $(CASES)$*/$(SRV_OUT)
+%-diff-cli:
+	make $*-cli > $(OUT_DIR)$(CLI_OUT)
+	diff $(OUT_DIR)$(CLI_OUT) $(CASES)$*/$(CLI_OUT)
+%-diff-cli1:
+	make $*-cli1 > $(OUT_DIR)$(CLI1_OUT)
+	diff $(OUT_DIR)$(CLI1_OUT) $(CASES)$*/$(CLI1_OUT)
+%-diff-cli2:
+	make $*-cli2 > $(OUT_DIR)$(CLI2_OUT)
+	diff $(OUT_DIR)$(CLI2_OUT) $(CASES)$*/$(CLI2_OUT)
 
-### ------------------------- DEBUGGING TEST CASES ------------------------- ###
-
-127+127-srv:
-	./$(SRV_DB) < $(CASES)127+127/$(SRV_IN)
-127+127-cli:
-	./$(CLI_DB) < $(CASES)127+127/$(CLI_IN)
-
-bad.client-srv:
-	./$(SRV_DB) < $(CASES)bad.client/$(SRV_IN)
-bad.client-cli:
-	./$(CLI_DB) < $(CASES)bad.client/$(CLI_IN)
-
-bad.server-srv:
-	./$(SRV_DB) < $(CASES)bad.server/$(SRV_IN)
-bad.server-cli:
-	./$(CLI_DB) < $(CASES)bad.server/$(CLI_IN)
-
-call2-srv:
-	./$(SRV_DB) < $(CASES)call2/$(SRV_IN)
-call2-cli:
-	./$(CLI_DB) < $(CASES)call2/$(CLI_IN)
-
-call-twice-srv:
-	./$(SRV_DB) < $(CASES)call-twice/$(SRV_IN)
-call-twice-cli:
-	./$(CLI_DB) < $(CASES)call-twice/$(CLI_IN)
-
-missing-srv:
-	./$(SRV_DB) < $(CASES)missing/$(SRV_IN)
-missing-cli:
-	./$(CLI_DB) < $(CASES)missing/$(CLI_IN)
-
-switch1-srv:
-	./$(SRV_DB) < $(CASES)switch1/$(SRV_IN)
-switch1-cli:
-	./$(CLI_DB) < $(CASES)switch1/$(CLI_IN)
-
-endian1-srv:
-	./$(SRV_DB) < $(CASES)endian1/$(SRV_IN)
-endian1-cli:
-	./$(CLI_DB) < $(CASES)endian1/$(CLI_IN)
-
-endian2-srv:
-	./$(SRV_DB) < $(CASES)endian2/$(SRV_IN)
-endian2-cli:
-	./$(CLI_DB) < $(CASES)endian2/$(CLI_IN)
-
-endian3-srv:
-	./$(SRV_DB) < $(CASES)endian3/$(SRV_IN)
-endian3-cli:
-	./$(CLI_DB) < $(CASES)endian3/$(CLI_IN)
-
-block1-srv:
-	$(VALGRND) ./$(SRV_DB) < $(CASES)block1/$(SRV_IN)
-block1-cli1:
-	$(VALGRND) ./$(CLI_DB) < $(CASES)block1/client1.in
-block1-cli2:
-	$(VALGRND) ./$(CLI_DB) < $(CASES)block1/client2.in
-
-block2-srv:
-	$(VALGRND) ./$(SRV_DB) < $(CASES)block2/$(SRV_IN)
-block2-cli1:
-	$(VALGRND) ./$(CLI_DB) < $(CASES)block2/client1.in
-block2-cli2:
-	$(VALGRND) ./$(CLI_DB) < $(CASES)block2/client2.in
-
+# shortcut to clean, re-compile and debug
 shortcut:
 	make clean
 	make
 	make debug
-	make block2-srv
