@@ -11,7 +11,7 @@
 #include <stdint.h>
 #include "rpc.h"
 
-#define DEBUG      (int) 1
+#define DEBUG      (int) 0
 #define ERROR      (int) (-1)
 #define OVERLENGTH (int) (-2)
 

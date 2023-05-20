@@ -16,6 +16,20 @@
 #include "rpc_utils.h"
 
 
+/* node data structure */
+struct qnode_function {
+    function_t* function;
+    struct qnode_function* next;
+};
+
+/* queue data structure */
+struct queue_function {
+    qnode_f* node;
+    qnode_f* last;
+    int size;
+};
+
+
 /**
  * Initialize a function.
  * @param f_name    the function's name
@@ -42,7 +56,6 @@ function_t* function_init(char* f_name, rpc_handler f_handler) {
     assert(f);
     uint64_t id = hash((unsigned char*) f_name);
     f->id = id;
-    f->f_name = f_name;
     f->f_handler = f_handler;
     return f;
 }
@@ -52,7 +65,7 @@ function_t* function_init(char* f_name, rpc_handler f_handler) {
  * Initialize a queue's node.
  * @return  the initialized queue node
  */
-qnode_f* qnode_init() {
+qnode_f* function_qnode_init() {
     qnode_f* qn = (qnode_f*) malloc(sizeof(qnode_f));
     assert(qn);
     return qn;
@@ -62,9 +75,9 @@ qnode_f* qnode_init() {
  * Initialize a function queue.
  * @return  the initialized queue
  */
-queue_f* queue_init() {
+queue_f* function_queue_init() {
     queue_f* q = (queue_f*) malloc(sizeof(queue_f));
-    q->node = qnode_init();
+    q->node = function_qnode_init();
     q->last = q->node;
     q->size = 0;
     assert(q);
@@ -77,7 +90,7 @@ queue_f* queue_init() {
  * @param  f  the function to be enqueued
  * @return    0 if enqueued successfully, 1 if not, and -1 if execution fails
  */
-int enqueue(queue_f* q, function_t* f) {
+int function_enqueue(queue_f* q, function_t* f) {
     assert(q);
     assert(q->last);
     if (! f) return -1;
@@ -91,7 +104,7 @@ int enqueue(queue_f* q, function_t* f) {
         curr = curr->next;
     }
     q->last->function = f;
-    q->last->next = qnode_init();
+    q->last->next = function_qnode_init();
     q->last = q->last->next;
     (q->size)++;
     return 0;
@@ -102,7 +115,7 @@ int enqueue(queue_f* q, function_t* f) {
  * @param q the given queue
  * @return  the dequeued function
  */
-function_t* dequeue(queue_f* q) {
+function_t* function_dequeue(queue_f* q) {
     if (q->size <= 0) {
         q->size = 0;
         return NULL;
@@ -123,16 +136,9 @@ function_t* dequeue(queue_f* q) {
  * @return          NULL if no function of name found,
  *                  or the function structure if found
  */
-function_t* search(queue_f* functions, char* name) {
+function_t* function_search(queue_f* functions, char* name) {
     uint64_t hashed = hash((unsigned char*) name);
-    qnode_f *curr = functions->node;
-    for (int i=0; i < functions->size; i++) {
-        if (hashed == curr->function->id)
-            break;
-        curr = curr->next;
-    }
-    if (curr == NULL) return NULL;
-    return curr->function;
+    return function_search_id(functions, hashed);
 }
 
 /**
@@ -142,7 +148,7 @@ function_t* search(queue_f* functions, char* name) {
  * @return          NULL if no function of name found,
  *                  or the function structure if found
  */
-function_t* search_id(queue_f* functions, uint64_t id) {
+function_t* function_search_id(queue_f* functions, uint64_t id) {
     // check if the function of requested id exists
     qnode_f *curr = functions->node;
     for (int i=0; i < functions->size; i++) {
@@ -160,7 +166,7 @@ function_t* search_id(queue_f* functions, uint64_t id) {
  * @param q  the queue
  */
  __attribute__((unused))
-void free_queue(queue_f* q) {
-    while (q->size > 0) dequeue(q);
+void free_function_queue(queue_f* q) {
+    while (q->size > 0) function_dequeue(q);
     free(q);
 }

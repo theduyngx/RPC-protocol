@@ -34,7 +34,6 @@ rpc_server* rpc_init_server(int port) {
     int err;
     int QUEUE_SIZE  = 20;
     int POOL_SIZE   = 20;
-    int JOIN_SIZE   = 15;
     int TIMEOUT_SEC = 5;
 
     // create listen socket
@@ -48,27 +47,15 @@ rpc_server* rpc_init_server(int port) {
     struct rpc_server* server = (struct rpc_server*) malloc(sizeof (struct rpc_server));
     assert(server);
     server->listen_fd       = listen_fd;
-    server->functions       = queue_init();
+    server->functions       = function_queue_init();
     server->pool_size       = POOL_SIZE;
-    server->join_threshold  = JOIN_SIZE;
-    server->num_connected   = 0;
-    server->num_connections = 0;
+    server->client_conns    = client_queue_init();
     assert(server->listen_fd && server->functions);
 
-    // validate join threshold
-    err = (server->join_threshold >= server->pool_size);
-    if (err) {
-        print_error(TITLE, "join threshold exceeds pool size");
-        free(server->functions);
-        free(server);
-        return NULL;
-    }
-
     // create thread pool
-    err  = rpc_server_threads_init(server);
-    err += threads_detach(server);
+    err = rpc_server_threads_init(server);
     if (err < 0) {
-        print_error(TITLE, "rpc-server: cannot create / detach thread pool");
+        print_error(TITLE, "rpc-server: cannot create thread pool");
         free(server->functions);
         free(server);
         return NULL;
@@ -99,7 +86,7 @@ int rpc_register(rpc_server *server, char *name, rpc_handler handler) {
         print_error(TITLE, "function_init returns NULL");
         return ERROR;
     }
-    return enqueue(server->functions, f);
+    return function_enqueue(server->functions, f);
 }
 
 
@@ -125,15 +112,6 @@ _Noreturn void rpc_serve_all(rpc_server* server) {
             continue;
         }
         server->accept_fd = accept_fd;
-
-        // suspend activity on condition
-        if (server->num_connections >= server->join_threshold) {
-            err = threads_join(server);
-            if (err) {
-                print_error(TITLE, "cannot join thread pool");
-                continue;
-            }
-        }
 
         // set up new connection
         err = new_connection_update(server);

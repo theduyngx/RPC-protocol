@@ -10,6 +10,7 @@
 
 #include <pthread.h>
 #include "function_queue.h"
+#include "client_queue.h"
 
 #define FIND_SERVICE (int) 0    // flag from client requesting find service
 #define CALL_SERVICE (int) 1    // flag from client requesting call service
@@ -19,11 +20,9 @@
 struct rpc_server {
     int listen_fd;
     int accept_fd;
-    int num_connections;
-    int num_connected;
     int pool_size;
-    int join_threshold;
     queue_f* functions;
+    queue_c* client_conns;
     pthread_t* threads;
 };
 
@@ -45,7 +44,5 @@ int package_init(rpc_server* server);
 /* thread pool architecture function prototypes */
 int rpc_server_threads_init(rpc_server* server);
 int new_connection_update(rpc_server* server);
-int threads_detach(rpc_server* server);
-int threads_join(rpc_server* server);
 
 #endif //PROJECT2_RPC_SERVER_H

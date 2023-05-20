@@ -11,6 +11,7 @@
 #include <netdb.h>
 
 #include "rpc_server.h"
+#include "client_queue.h"
 #include "rpc_utils.h"
 
 
@@ -128,7 +129,7 @@ function_t* rpc_serve_find(struct rpc_server* server, int accept_fd) {
 
     // check if the function of requested name exists with flag verification
     int flag = ERROR;
-    function_t* handler = search(server->functions, name_buffer);
+    function_t* handler = function_search(server->functions, name_buffer);
     if (handler == NULL)
         print_error(TITLE, "cannot find requested function's name");
     else
@@ -174,7 +175,7 @@ int rpc_serve_call(struct rpc_server* server, int accept_fd) {
     }
 
     // send verification flag to client
-    function_t* function = search_id(server->functions, id);
+    function_t* function = function_search_id(server->functions, id);
     int flag = -(function == NULL);
     err = rpc_send_int(accept_fd, flag);
     if (err) {
@@ -313,27 +314,20 @@ int rpc_server_threads_init(rpc_server* server) {
 _Noreturn void* thread_serve(void* server_obj) {
     rpc_server* server = (rpc_server*) server_obj;
     while (1) {
-        int thread_fd = -1;
-
         // check if any client is not yet served
         pthread_mutex_lock(&mutex);
         pthread_cond_wait(&condition, &mutex);
-        int cond = (server->num_connected > 0);
-        if (cond) {
-            (server->num_connected)--;
-            thread_fd = server->accept_fd;
-        }
+        int thread_fd = client_dequeue(server->client_conns);
         pthread_mutex_unlock(&mutex);
 
         // serve the client
-        if (cond) {
+        if (thread_fd >= 0) {
             int flag = ERROR;
             while (rpc_receive_request(thread_fd, &flag) == 0) {
                 if      (flag == FIND_SERVICE) rpc_serve_find(server, thread_fd);
                 else if (flag == CALL_SERVICE) rpc_serve_call(server, thread_fd);
                 else    break;
             }
-            (server->num_connections)--;
         }
     }
 }
@@ -346,36 +340,8 @@ _Noreturn void* thread_serve(void* server_obj) {
 int new_connection_update(rpc_server* server) {
     int err = 0;
     err += pthread_mutex_lock(&mutex);
-    (server->num_connections)++;
-    (server->num_connected)++;
+    err += client_enqueue(server->client_conns, server->accept_fd);
     err += pthread_cond_signal(&condition);
     err += pthread_mutex_unlock(&mutex);
-    return err;
-}
-
-
-/**
- * Joining server's threads. This will be called periodically.
- * @param server
- */
-int threads_detach(rpc_server* server) {
-    int err = 0;
-    for (int i=0; i < server->num_connections; i++) {
-        pthread_t thread = server->threads[i];
-        err += pthread_detach(thread);
-    }
-    return err;
-}
-
-/**
- * Joining server's threads. This will be called periodically.
- * @param server
- */
-int threads_join(rpc_server* server) {
-    int err = 0;
-    for (int i=0; i < server->num_connections; i++) {
-        pthread_t thread = server->threads[i];
-        err += pthread_join(thread, NULL);
-    }
     return err;
 }

@@ -15,7 +15,6 @@
 /* function data structure */
 struct function {
     uint64_t id;
-    char* f_name;
     rpc_handler f_handler;
 };
 typedef struct function function_t;
@@ -24,26 +23,17 @@ typedef struct function function_t;
 function_t* function_init(char* f_name, rpc_handler f_handler);
 
 /* node data structure */
-struct qnode {
-    function_t* function;
-    struct qnode* next;
-};
-typedef struct qnode qnode_f;
+typedef struct qnode_function qnode_f;
 
 /* queue data structure */
-struct queue {
-    qnode_f* node;
-    qnode_f* last;
-    int size;
-};
-typedef struct queue queue_f;
+typedef struct queue_function queue_f;
 
 /* queue functions */
-queue_f* queue_init();
-int enqueue(queue_f* q, function_t* f);
-function_t* dequeue(queue_f* q);
-function_t* search(queue_f* functions, char* name);
-function_t* search_id(queue_f* functions, uint64_t id);
-__attribute__((unused)) void free_queue(queue_f* q);
+queue_f* function_queue_init();
+int function_enqueue(queue_f* q, function_t* f);
+function_t* function_dequeue(queue_f* q);
+function_t* function_search(queue_f* functions, char* name);
+function_t* function_search_id(queue_f* functions, uint64_t id);
+__attribute__((unused)) void free_function_queue(queue_f* q);
 
 #endif //PROJECT2_FUNCTION_QUEUE_H
