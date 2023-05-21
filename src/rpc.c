@@ -5,10 +5,8 @@
  *           This entails functions for both server and client side.
  */
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <string.h>
 #include <netdb.h>
 #include <unistd.h>
 
@@ -151,18 +149,11 @@ rpc_handle* rpc_find(rpc_client *client, char *name) {
         return NULL;
     }
 
-    // Send the name's length to server
-    uint64_t name_len = strlen(name);
-    err = rpc_send_uint(client->conn_fd, name_len);
+    // Send the name's hash value
+    uint64_t hashed = hash((unsigned char*) name);
+    err = rpc_send_uint(client->conn_fd, hashed);
     if (err) {
         print_error(TITLE, "cannot send length of function's name to server");
-        return NULL;
-    }
-
-    // Send function name to server
-    ssize_t n = send(client->conn_fd, name, name_len, 0);
-    if (n < 0) {
-        print_error(TITLE, "cannot send function's name to server");
         return NULL;
     }
 

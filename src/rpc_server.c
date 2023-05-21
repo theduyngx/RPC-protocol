@@ -58,11 +58,11 @@ int create_listen_socket(int port, int timeout_sec, int queue_size) {
     struct addrinfo *result = results;
     for (; result != NULL; result = result->ai_next) {
         if (result->ai_family == AF_INET6 &&
-            (listen_fd = socket(result->ai_family,
-                                result->ai_socktype,
-                                result->ai_protocol)
-            ) >= 0
-                ) break;
+               (listen_fd = socket(result->ai_family,
+                                   result->ai_socktype,
+                                   result->ai_protocol)
+               ) >= 0
+           ) break;
     }
     if (listen_fd < 0) {
         print_error(TITLE, "listen socket cannot be found");
@@ -106,31 +106,19 @@ int create_listen_socket(int port, int timeout_sec, int queue_size) {
 function_t* rpc_serve_find(struct rpc_server* server, int accept_fd) {
     char* TITLE = "rpc-server: rpc_serve_all";
 
-    // receive the name's length from client
+    // receive the name's hash from client
     int err;
-    uint64_t name_len;
-    err = rpc_receive_uint(accept_fd, &name_len);
+    uint64_t hashed;
+    err = rpc_receive_uint(accept_fd, &hashed);
     if (err) {
-        print_error(TITLE, "cannot receive the length of client's "
-                           "requested function's name");
+        print_error(TITLE, "cannot receive the hashed value for "
+                           "the requested function's name from client");
         return NULL;
     }
 
-    // receive the function's name from client
-    char name_buffer[name_len+1];
-    memset(name_buffer, 0, name_len+1);
-    ssize_t n = recv(accept_fd, name_buffer, name_len, 0);
-    if (n < 0) {
-        print_error(TITLE, "cannot receive client's requested function name");
-        return NULL;
-    }
-    // Null-terminate string
-    assert(name_len == n);
-    name_buffer[n] = '\0';
-
-    // check if the function of requested name exists with flag verification
+    // check if the function of requested id exists with flag verification
     int flag = ERROR;
-    function_t* handler = function_search(server->functions, name_buffer);
+    function_t* handler = function_search(server->functions, hashed);
     if (handler == NULL)
         print_error(TITLE, "cannot find requested function's name");
     else
@@ -176,7 +164,7 @@ int rpc_serve_call(struct rpc_server* server, int accept_fd) {
     }
 
     // send verification flag to client
-    function_t* function = function_search_id(server->functions, id);
+    function_t* function = function_search(server->functions, id);
     int flag = -(function == NULL);
     err = rpc_send_int(accept_fd, flag);
     if (err) {

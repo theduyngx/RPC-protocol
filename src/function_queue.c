@@ -129,17 +129,6 @@ function_t* function_dequeue(queue_f* q) {
     return f;
 }
 
-/**
- * Search for a function with the specified function name.
- * @param functions function queue
- * @param name      the specified function's name
- * @return          NULL if no function of name found,
- *                  or the function structure if found
- */
-function_t* function_search(queue_f* functions, char* name) {
-    uint64_t hashed = hash((unsigned char*) name);
-    return function_search_id(functions, hashed);
-}
 
 /**
  * Search for a function with the specified function id.
@@ -148,7 +137,7 @@ function_t* function_search(queue_f* functions, char* name) {
  * @return          NULL if no function of name found,
  *                  or the function structure if found
  */
-function_t* function_search_id(queue_f* functions, uint64_t id) {
+function_t* function_search(queue_f* functions, uint64_t id) {
     // check if the function of requested id exists
     qnode_f *curr = functions->node;
     for (int i=0; i < functions->size; i++) {

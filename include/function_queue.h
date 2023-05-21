@@ -32,8 +32,7 @@ typedef struct queue_function queue_f;
 queue_f* function_queue_init();
 int function_enqueue(queue_f* q, function_t* f);
 function_t* function_dequeue(queue_f* q);
-function_t* function_search(queue_f* functions, char* name);
-function_t* function_search_id(queue_f* functions, uint64_t id);
+function_t* function_search(queue_f* functions, uint64_t id);
 __attribute__((unused)) void free_function_queue(queue_f* q);
 
 #endif //PROJECT2_FUNCTION_QUEUE_H
